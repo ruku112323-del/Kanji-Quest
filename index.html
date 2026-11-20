@@ -1069,7 +1069,7 @@ const KQ_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==
 new Phaser.Game({type:KQ_IOS?Phaser.CANVAS:Phaser.AUTO,parent:"game",width:512,height:352,pixelArt:true,backgroundColor:"#7bb661",
  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
  scene:{create(){tileset(this);
-  sprites(this);P.sc=this;P.ready=1;loadRegion()}}});
+  sprites(this);P.sc=this;P.ready=1;kqClickInit(this);loadRegion()}}});
 function hud(){{const sr=RG[S.r];$("#skipVillage").hidden=!!(S[sr.win]||sr.dg);$("#skipVillage").textContent="⏭ Skip "+sr.n}$("#lv").innerHTML="⭐ <strong>Lv "+S.lv+"</strong>";$("#xp").style.width=Math.max(0,Math.min(100,S.xp/(S.lv*40)*100))+"%";$("#gd").innerHTML="🪙 <strong>"+S.gold+"</strong> · 🧪 "+S.pot+" · 💡 "+S.hint+" · ⚔️ "+SWN[S.sw];rankHud();$("#iv").innerHTML="❤️ <strong>"+S.hp+" / "+maxHP()+" HP</strong> · ⚔️ "+weaponPower()+" ATK · 🛡 "+armorDefense()+" DEF";
  const r=RG[S.r],nf=KS.filter(k=>RK(k)&&K[k].p.length==2).length,cr=KS.filter(k=>RK(k)&&S.kn[k]&&S.kn[k].cr).length,md=S.kills[S.r]||0;
  $("#hint").textContent=r.dg?"🌲 "+r.n+" — defeat the 3 monsters 👾 ("+Math.min(3,md)+"/3 this trip). Edge openings lead to other maps.":!S[r.fl]?"Quest: talk to "+r.npc+" (walk into them).":lessonDueNow()?"📚 A new lesson is ready: talk to "+r.npc+".":cr<KS.filter(k=>RK(k)&&K[k].p.length==2&&S.kn[k]).length?"Quest: forge kanji at the blacksmith 🔨 ("+cr+"/"+nf+").":cr<nf?"Quest: learn more kanji from "+r.npc+" ("+taughtIn(S.r).length+"/"+regionKanji(S.r).length+" taught).":md<3?"Quest: defeat the 3 monsters 👾 ("+md+"/3).":!S[r.win]?(bossLocked(S.r)?"Quest: bring every local kanji to Familiar to break the boss seal ("+familiarCount(S.r)+"/"+regionKanji(S.r).length+").":"Quest: face the boss in the north."):r.hn}
@@ -1445,7 +1445,7 @@ let kqHeld=[],kqTimer=0;
 function kqTick(){if(!kqHeld.length){clearInterval(kqTimer);kqTimer=0;return}
  if(!$("#m").hidden){kqHeld=[];clearInterval(kqTimer);kqTimer=0;return}
  const h=kqHeld[kqHeld.length-1];mv(...h.d)}
-function kqHold(id,d){kqHeld=kqHeld.filter(h=>h.id!==id);kqHeld.push({id,d});mv(...d);if(!kqTimer)kqTimer=setInterval(kqTick,25)}
+function kqHold(id,d){kqPathCancel();kqHeld=kqHeld.filter(h=>h.id!==id);kqHeld.push({id,d});mv(...d);if(!kqTimer)kqTimer=setInterval(kqTick,25)}
 function kqRelease(id){kqHeld=kqHeld.filter(h=>h.id!==id);if(!kqHeld.length&&kqTimer){clearInterval(kqTimer);kqTimer=0}}
 function kqReleaseAll(){kqHeld=[];if(kqTimer){clearInterval(kqTimer);kqTimer=0}}
 document.querySelectorAll("#pad button").forEach(b=>{const d=b.dataset.d.split(",").map(Number),id="pad"+b.dataset.d;
@@ -1454,6 +1454,39 @@ document.querySelectorAll("#pad button").forEach(b=>{const d=b.dataset.d.split("
 addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const key=e.key.length==1?e.key.toLowerCase():e.key,d=KQ_DIRS[key];if(!d)return;e.preventDefault();if(e.repeat)return;kqHold("k"+key,d)});
 addEventListener("keyup",e=>{const key=e.key.length==1?e.key.toLowerCase():e.key;kqRelease("k"+key)});
 addEventListener("blur",kqReleaseAll);document.addEventListener("visibilitychange",()=>{if(document.hidden)kqReleaseAll()});
+/* ===== tap / click to move and interact ===== */
+let kqPath=null,kqPathT=0,kqPathLayer=null;
+function kqPathCancel(){kqPath=null;if(kqPathT){clearInterval(kqPathT);kqPathT=0}}
+function kqPass(x,y){const L=P.layer;if(!L)return false;const t=L.getTileAt(x,y);if(!t||t.collides)return false;if(vilBlocked(x,y))return false;return !E.some(o=>o.x==x&&o.y==y&&!S.dead.includes(o.id))}
+function kqPlan(tx,ty){
+ const L=P.layer,W=L.layer.width,H=L.layer.height,sx=S.px,sy=S.py,key=(x,y)=>y*W+x,D=[[0,-1],[-1,0],[0,1],[1,0]];
+ const prev=new Map([[key(sx,sy),null]]),dist=new Map([[key(sx,sy),0]]),q=[[sx,sy]];
+ for(let i=0;i<q.length;i++){const [x,y]=q[i],dd=dist.get(key(x,y));for(const [dx,dy] of D){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const k=key(nx,ny);if(prev.has(k)||!kqPass(nx,ny))continue;prev.set(k,[x,y]);dist.set(k,dd+1);q.push([nx,ny])}}
+ const build=(gx,gy)=>{const out=[];let c=[gx,gy],p;while((p=prev.get(key(c[0],c[1])))){out.unshift([c[0]-p[0],c[1]-p[1]]);c=p}return out};
+ if(kqPass(tx,ty))return prev.has(key(tx,ty))?build(tx,ty):null;
+ let best=null;
+ for(const [dx,dy] of D){const nx=tx+dx,ny=ty+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const k=key(nx,ny);if(!prev.has(k))continue;const d=dist.get(k);if(!best||d<best.d)best={d,x:nx,y:ny,fx:-dx,fy:-dy}}
+ if(!best)return null;
+ const path=build(best.x,best.y);path.push([best.fx,best.fy]);path.final=true;return path}
+function kqPathTick(){
+ if(!kqPath||!kqPath.length||P.layer!==kqPathLayer||!$("#m").hidden){kqPathCancel();return}
+ if(P.moving)return;
+ const [dx,dy]=kqPath[0],final=kqPath.final&&kqPath.length===1,x=S.px+dx,y=S.py+dy;
+ if(!final&&!kqPass(x,y)){kqPathCancel();return}
+ kqPath.shift();mv(dx,dy);
+ if(!final&&(S.px!==x||S.py!==y)){kqPathCancel();return}
+ if(!kqPath.length)kqPathCancel()}
+function kqClickInit(sc){sc.input.on("pointerdown",ptr=>{
+ if(!P.ready||!P.layer||!$("#m").hidden)return;
+ if(ptr.event&&ptr.event.button>0)return;
+ const w=sc.cameras.main.getWorldPoint(ptr.x,ptr.y),tx=Math.floor(w.x/32),ty=Math.floor(w.y/32);
+ if((tx===S.px&&ty===S.py)||!P.layer.getTileAt(tx,ty))return;
+ kqReleaseAll();kqPathCancel();
+ const path=kqPlan(tx,ty);
+ if(!path){$("#hint").textContent="🚫 Can't reach that spot.";return}
+ if(!path.length)return;
+ try{const m=sc.add.rectangle(tx*32+16,ty*32+16,28,28,0xffffff,.18).setStrokeStyle(2,0xffffff).setDepth(50);sc.tweens.add({targets:m,alpha:0,duration:450,onComplete:()=>m.destroy()})}catch(e){}
+ kqPath=path;kqPathLayer=P.layer;kqPathT=setInterval(kqPathTick,25);kqPathTick()})}
 $("#cv").onclick=()=>{civPage="main";civilization()};
 $("#ql").onclick=()=>quests();
 $("#bk").onclick=()=>book();
@@ -2343,7 +2376,7 @@ window.kqOpenProgress=open;
 }catch(e){console.warn("menu",e)}})();
 </script><script>
 (function(){try{
- const html='<b>🎮 How to play</b><p><b>Move:</b> arrow keys <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.</p><p><b>Talk, fight, gather:</b> walk into a character, monster, tree, water or crystal.</p><p><b>Change map:</b> walk onto an opening at the edge of the map.</p><p><b>Menu:</b> tap <b>☰ Menu</b> for Civilization, Quests, Kanji Journal, World Map, Tower Progress, Inventory, Rest, and your level, EXP and gold.</p><button id="kqTutOk" type="button">Got it, start playing</button>';
+ const html='<b>🎮 How to play</b><p><b>Move:</b> arrow keys <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.</p><p><b>Tap or click</b> any spot to walk there, or tap a character, monster, tree, water or crystal to go and interact with it.</p><p><b>Change map:</b> walk onto an opening at the edge of the map.</p><p><b>Menu:</b> tap <b>☰ Menu</b> for Civilization, Quests, Kanji Journal, World Map, Tower Progress, Inventory, Rest, and your level, EXP and gold.</p><button id="kqTutOk" type="button">Got it, start playing</button>';
  const open=()=>{show(html);const b=document.getElementById("kqTutOk");if(b)b.onclick=()=>{try{localStorage.setItem("kqTut1","1")}catch(e){}hide()}};
  const btn=document.createElement("button");btn.id="kqHow";btn.type="button";btn.textContent="❓ How to play";btn.onclick=open;
  const h=document.querySelector("header").lastElementChild,m=document.querySelector("#kqMenu .mbtns>div");(m||h).appendChild(btn);
