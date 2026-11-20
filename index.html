@@ -438,7 +438,11 @@ body.kq-rm *,body.kq-rm *:before,body.kq-rm *:after{animation:none!important;tra
 #kqMenu[hidden]{display:none!important}
 #kqMenu .mbox{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 40px #000a}
 #kqMenu .mtop{display:flex;align-items:center;justify-content:space-between;color:#f2c36d;font-size:16px}
-#kqMenu #kqMenuX{min-height:36px;padding:4px 12px}
+#kqMenu #kqMenuX,#kqMenu #kqDevBtn{min-height:36px;padding:4px 12px}
+#kqMenu .mact{display:flex;gap:6px}
+#kqDevBtn[aria-pressed=true]{background:#3b6e3b;color:#fff}
+#kqDev{position:fixed;left:6px;bottom:6px;z-index:80;background:rgba(0,0,0,.75);color:#9fe8a0;font:11px/1.4 monospace;padding:5px 8px;border-radius:8px;pointer-events:none;white-space:pre}
+#kqDev[hidden]{display:none}
 #kqMenu #hud{display:flex!important;flex-wrap:wrap;margin:0!important;padding:8px!important;gap:8px!important;font-size:13px!important}
 #kqMenu #hud #rk,#kqMenu #hud #iv{display:inline-flex!important}
 #kqMenu .xp-wrap{flex:1 1 100%}
@@ -804,7 +808,7 @@ const COMPONENTS=[
  ["食","食 / 飠","food / eating",7,"食、飲、飯"],["示","示 / 礻","ritual / ceremony",7,"社、神、礼"],["衣","衣 / 衤","clothing",7,"衣、初、補"],["犬","犬 / 犭","dog / animals",7,"犬、猫、狭"],["刀","刀 / 刂","sword / cutting",7,"刀、切、別"],["广","广","building / shelter",7,"広、店、度"]
 ].map(([id,form,meaning,chapter,examples])=>({id,form,meaning,chapter,examples}));
 function ensureMastery(k){const d=S.kn[k];if(!d)return null;d.mastery=d.mastery||{learningTypes:[],familiarCorrect:0,familiarRounds:[],masterCorrect:0,masterRounds:[],masterTypes:[],failStreak:0};return d.mastery}
-function masteryLabel(k){return SN[st(k)]||"Undiscovered"}
+function masteryLabel(k){return kqTier(k)||"Undiscovered"}
 function chooseReviewKanji(){const pool=KS.filter(k=>S.kn[k]);if(!pool.length)return null;const groups=[
   pool.filter(k=>ensureMastery(k).failStreak>=1),pool.filter(k=>st(k)<=2),pool.filter(k=>st(k)===3),pool.filter(k=>st(k)===4)
  ].map((items,i)=>({items,weight:[40,30,20,10][i]})).filter(g=>g.items.length);const total=groups.reduce((n,g)=>n+g.weight,0);let roll=Math.random()*total;for(const g of groups){roll-=g.weight;if(roll<0)return g.items[Math.floor(Math.random()*g.items.length)]}return pool[Math.floor(Math.random()*pool.length)]}
@@ -829,7 +833,7 @@ function applyFormalRound(results){S.review.rounds=(S.review.rounds||0)+1;const 
 function startFormalReview(){const pool=KS.filter(k=>S.kn[k]);if(!pool.length){journal("review","Discover some Kanji before starting a review.");return}
  let n=0,correct=0,round={};const ask=()=>{if(n>=5){applyFormalRound(round);hud();const changed=Object.keys(round).map(k=>`${k}: ${masteryLabel(k)}`).join(" · ");show(`<b>📘 Formal Review Complete</b><p>You answered ${correct}/5 correctly.</p><p>${changed}</p><p>Mastery progress is saved. Three consecutive failed formal review rounds for a Kanji lower its stage by one.</p><button id="reviewAgain">Review again</button><button id="reviewBack">Journal</button>`);$("#reviewAgain").onclick=startFormalReview;$("#reviewBack").onclick=()=>journal("review");return}
   let k=chooseReviewKanji();if(round[k]?.total>=2){const alternatives=pool.filter(x=>(round[x]?.total||0)<2);if(alternatives.length)k=alternatives[Math.floor(Math.random()*alternatives.length)]}
-  const q=formalQuestion(k);show(`<b>📘 Formal Review · Question ${n+1}/5</b><p><small>${masteryLabel(k)} · ${k}</small></p><h2>${q.prompt}</h2>`+q.options.map((o,i)=>`<button class="c sh" data-v="${i}">${o}</button>`).join(""));KQ_ANS={a:q.answer};bind(i=>{const ok=q.options[+i]===q.answer;round[k]=round[k]||{correct:0,total:0,types:[]};round[k].total++;if(ok){correct++;round[k].correct++;round[k].types.push(q.type)}n++;show(`<b>${ok?"✅ Correct":"❌ Not quite"}</b><p>${ok?"Good recall!":"Correct answer: "+q.answer}</p><button id="reviewNext">${n===5?"See results":"Next question"}</button>`);$("#reviewNext").onclick=ask});};ask();}
+  const q=formalQuestion(k);show(`<b>📘 Formal Review · Question ${n+1}/5</b><p><small>${masteryLabel(k)} · ${k}</small></p><h2>${q.prompt}</h2>`+q.options.map((o,i)=>`<button class="c sh" data-v="${i}">${o}</button>`).join(""));KQ_ANS={a:q.answer};bind(i=>{const ok=q.options[+i]===q.answer;kqStreak(k,ok);round[k]=round[k]||{correct:0,total:0,types:[]};round[k].total++;if(ok){correct++;round[k].correct++;round[k].types.push(q.type)}n++;show(`<b>${ok?"✅ Correct":"❌ Not quite"}</b><p>${ok?"Good recall!":"Correct answer: "+q.answer}</p><button id="reviewNext">${n===5?"See results":"Next question"}</button>`);$("#reviewNext").onclick=ask});};ask();}
 
 const rar=k=>{const d=S.kn[k]||{},o=d.ok||0,base=o>=20&&!d.wk?3:o>=10?2:o>=3?1:0;return Math.min(base,GEAR_STAGE_CAP[st(k)]??0)};
 const gearTier=g=>g.tier??rar(g.k),gearLevel=g=>g.level||0;
@@ -883,7 +887,7 @@ function gather(t,x,y){
  const ask=()=>{if(round>=5){fieldVocabularyNote(finishGather);return}
   const k=learned[Math.floor(Math.random()*learned.length)],q=Q(k,Math.floor(Math.random()*3)),thisRound=round+1;
   show(`<b>${emoji} ${label} Gathering Test</b><p>Round ${thisRound} of 5</p><div class=bar><i style="width:${round/5*100}%"></i></div><p><b>${k}</b> · ${q.t}</p>`+q.o.map((a,j)=>`<button class="c" data-v="${j}">${a}</button>`).join(""));
-  gmSkipBtn(skipG);KQ_ANS={a:q.a};bind(j=>{const answer=q.o[+j],isRight=answer===q.a;let pn="";if(isRight){correct++;const d=S.kn[k];d.last=++S.turn;d.ok=(d.ok||0)+1;const pc=practiceCredit(k);pn=practiceNote(pc,k);if(pc&&pc.stage)gatherPromos.push(k+" → "+SN[pc.stage])}earned++;if(kind==="t")S.inv.wood++;else if(kind==="w")S.inv.water++;else grantRegionalOre(kind,1);round++;save();hud();const feedback=isRight?"✅ Correct! +1 "+emoji+" "+label+"."+pn:"📘 Not quite. The answer was "+q.a+". +1 "+emoji+" "+label+" for completing the round.";show(`<b>${emoji} Round ${thisRound}/5</b><p>${feedback}</p><button id=next>${round===5?"See results":"Next round"}</button>`);$("#next").onclick=ask});};ask();
+  gmSkipBtn(skipG);KQ_ANS={a:q.a};bind(j=>{const answer=q.o[+j],isRight=answer===q.a;let pn="";if(isRight){correct++;const d=S.kn[k];d.last=++S.turn;d.ok=(d.ok||0)+1;const pc=practiceCredit(k);pn=practiceNote(pc,k);if(pc&&pc.stage)gatherPromos.push(k+" → "+SN[pc.stage]);const su=kqStreak(k,1);if(su)gatherPromos.push(k+" → "+su+" (streak)")}else kqStreak(k,0);earned++;if(kind==="t")S.inv.wood++;else if(kind==="w")S.inv.water++;else grantRegionalOre(kind,1);round++;save();hud();const feedback=isRight?"✅ Correct! +1 "+emoji+" "+label+"."+pn:"📘 Not quite. The answer was "+q.a+". +1 "+emoji+" "+label+" for completing the round.";show(`<b>${emoji} Round ${thisRound}/5</b><p>${feedback}</p><button id=next>${round===5?"See results":"Next round"}</button>`);$("#next").onclick=ask});};ask();
 }
 function craft(note=""){show(`<b>🛠 Craft tools</b><p>${note||"Tools are made from kanji you have learned."}</p>`+Object.entries(TL).map(([id,t])=>`<button class="c sh" data-v="${id}">${t.n}${S.tool[id]?" ✔":""}<small>Needs ${id=="bucket"?"Water discovery":" "+t.ks.join(" + ")+" learned"} and ${t.o} 🪨 · ${t.d}</small></button>`).join("")+"<button id=bkm>◂ Back</button>");
  bind(id=>{const t=TL[id];if(S.tool[id])return craft("You already own it.");if(id==="bucket"?!S.civ.water:!t.ks.every(k=>st(k)>=2))return craft(id==="bucket"?"Discover Water before crafting a Bucket.":"You haven’t learned "+t.ks.join(" and ")+" yet.");if(S.inv.ore<t.o)return craft("You need "+t.o+" 🪨 Iron Ore.");S.inv.ore-=t.o;S.tool[id]=1;save();hud();craft(t.n+" crafted! Walk into "+({axe:"trees",bucket:"water",pickaxe:"mineral deposits",compressor:"dense-air crystals"}[id])+" to use it.")});$("#bkm").onclick=()=>smith()}
@@ -1024,7 +1028,7 @@ function portTick(t){(P.mk||[]).forEach(o=>{if(o.m.scene)o.m.setVisible(!S.dead.
  const moving=s===P.pl&&P.moving,w=s.displayWidth;o.sh.setPosition(s.x,s.y+s.displayHeight*.21).setVisible(s.visible);o.sh.setSize(Math.min(w*.55,38)*(moving?.9:1),7);
  if(s===P.pl){const dx=s.x-o.lx;if(Math.abs(dx)>.3)o.dir=dx>0;o.lx=s.x}
  s.setFlipX(!!o.dir&&s===P.pl);
- if(!KQ_REDUCE){const k=moving?Math.sin(t/55)*.055:Math.sin(t/520+o.ph)*.018;s.setScale(o.b*(1-k*.6),o.b*(1+k));s.setAngle(moving?Math.sin(t/110)*3:0)}
+ if(!KQ_REDUCE){const k=moving?Math.sin(t/55)*.07:Math.sin(t/520+o.ph)*.018;s.setScale(o.b*(1-k*.6),o.b*(1+k));s.setAngle(moving?Math.sin(t/110)*5:0);if(s===P.pl)s.setOrigin(.5,.78+(moving?Math.abs(Math.sin(t/110))*.07:0))}
  return true})}
 function setPort(s,i,h){const sc=P.sc;if(!s||!s.scene||!sc.textures.exists("pt"+i))return;h*=.8;s.setTexture("pt"+i);s.setOrigin(.5,.78);const b=h/sc.textures.get("pt"+i).getSourceImage().height;s.setScale(b);s.setDepth(5);
  P.pt=P.pt||[];let o=P.pt.find(x=>x.s===s);if(!o){o={s,sh:sc.add.ellipse(s.x,s.y,28,7,0x000000,.3).setDepth(4),ph:Math.random()*6,lx:s.x,dir:false};P.pt.push(o)}o.b=b;
@@ -1316,7 +1320,7 @@ function startDiscoveryVocabReview(level="All"){
   const w=questions[n];oldStages[w.id]=w.mastery;const q=makeQuestion(w);show(`<b>📚 ${level} Vocabulary Practice · ${n+1}/${questions.length}</b><p>${q.prompt}</p>`+q.choices.map((o,i)=>`<button class="c sh" data-v="${i}">${o}</button>`).join(""));KQ_ANS={a:q.answer};bind(i=>{const ok=q.choices[+i]===q.answer;if(ok)correct++;else missed.push(w);roundResults[w.id]=ok;n++;show(`<b>${ok?"✅ Correct":"❌ Not quite"}</b><p>${w.jp} (${w.reading}) means <b>${w.en}</b>.</p><button id="vocabNext">${n===questions.length?"See results":"Next word"}</button>`);$("#vocabNext").onclick=ask});
  };ask();
 }
-function det(k){const d=K[k];show(`<div class=big>${k}</div><p><b>${d.m}</b> · ${SN[st(k)]} · gear rarity: ${RC[rar(k)]} ${RAR[rar(k)]} (Rare at 3 correct, Legendary at 10, Mythical at 20 with no recent misses; capped by stage: Learning → Rare, Familiar → Legendary, Mastered → Mythical) · practice ${Math.min(S.kn[k].pp||0,PP_FAM)}/${PP_FAM} (${S.kn[k].ok} correct answers, ${S.kn[k].miss||0} misses${S.kn[k].cr?", forged":""})</p><p>On’yomi: ${d.on} · Kun’yomi: ${d.kun}<br>Radical family: ${({k:"刀",w:"水",t:"木"})[reg(k)]}<br>Parts: ${d.p.join(" + ")}<br>Story: ${d.s}<br>Word: ${d.v}</p><small>Parts and stories are visual memory aids, not historical etymology.</small><br><button id=bb>◂ Back</button>`);$("#bb").onclick=()=>book()}
+function det(k){const d=K[k];show(`<div class=big>${k}</div><p><b>${d.m}</b> · ${kqTier(k)} · gear rarity: ${RC[rar(k)]} ${RAR[rar(k)]} (Rare at 3 correct, Legendary at 10, Mythical at 20 with no recent misses; capped by stage: Learning → Rare, Familiar → Legendary, Mastered → Mythical) · practice ${Math.min(S.kn[k].pp||0,PP_FAM)}/${PP_FAM} (${S.kn[k].ok} correct answers, ${S.kn[k].miss||0} misses${S.kn[k].cr?", forged":""})</p><p>On’yomi: ${d.on} · Kun’yomi: ${d.kun}<br>Radical family: ${({k:"刀",w:"水",t:"木"})[reg(k)]}<br>Parts: ${d.p.join(" + ")}<br>Story: ${d.s}<br>Word: ${d.v}</p><small>Parts and stories are visual memory aids, not historical etymology.</small><br><button id=bb>◂ Back</button>`);$("#bb").onclick=()=>book()}
 function smith(note=""){if(!S[RG[S.r].fl]){say("Blacksmith",["Speak with the elder first."]);return}
  show(`<div class="kq-dialog-head">${kqPortrait(1,1,"kq-dialog-portrait","Village blacksmith")}<b>Blacksmith</b></div><p>${note||"New services become available as your civilization makes discoveries."}</p><button class="c" data-v="f">🔨 Forge kanji</button><button class="c" data-v="c">🛠 Craft tools</button><button class="c" data-v="s">🛒 Shop</button>${S.civ.fire?'<button class="c" data-v="g">⚒ Forge equipment</button><button class="c" data-v="m">📦 Materials inventory</button>':'<p>🔒 Equipment forging — discover Fire first.</p>'}${S.civ.metal?'<button class="c" data-v="u">⬆ Upgrade equipment</button><button class="c" data-v="r">✨ Refine ore</button>':'<p>🔒 Upgrades & ore refining — discover Metalworking.</p>'}<br><button id=cl>Leave</button>`);
  bind(v=>v=="f"?forgeList():v=="c"?craft():v=="g"?gearForge():v=="m"?materials():v=="u"?upgradeGear():v=="r"?refineOre():shop());$("#cl").onclick=hide}
@@ -1343,14 +1347,63 @@ function Q(k,ty){let t,a,d;const oth=KS.filter(x=>x!=k&&reg(x)===reg(k));
  d=shuf([...new Set(d)].filter(x=>x!=a)).slice(0,3);return{t,a,o:shuf([a,...d]),x:`${k} → ${a}`}}
 function weak(kn){return kn.map(k=>{const d=S.kn[k],ru=S.turn-(d.last||0)>=15;return{k,w:(d.wk||0)*3+(ru?2:0)+(d.ok<3?1:0),m:(d.wk||0)>0?"⭐":"💤"}}).filter(o=>o.w>=2).sort((a,b)=>b.w-a.w).slice(0,2).reduce((r,o)=>(r[o.k]=o.m,r),{})}
 function grantRegionalOre(region,amount){let out=[];if(!S.ores||!S.ores[region])return out;for(let n=0;n<amount;n++){const roll=Math.random()*100,tier=roll<60?0:roll<85?1:roll<97?2:3;S.ores[region][tier]++;out.push(ORE_TIERS[tier])}return out}
-function fight(e){
+/* ===== Streak tiers + village boss sentence trial ===== */
+function kqTier(k){const d=S.kn[k];if(!d)return SN[0];if(d.myth&&st(k)>=4)return"Mythical";if(d.leg&&st(k)>=4)return"Legendary";return SN[st(k)]||SN[0]}
+/* Consecutive correct answers (battle, gathering, formal review, boss trial): 3 = Familiar, 10 = Legendary, 20 = Mythical. A wrong answer resets the streak. */
+function kqStreak(k,ok){const d=S.kn&&S.kn[k];if(!d)return null;
+ if(!ok){if(d.streak){d.streak=0;save()}return null}
+ d.streak=(d.streak||0)+1;const m=ensureMastery(k);let up=null;
+ if(d.streak>=3&&st(k)<3){d.stage=3;d.pp=Math.max(Number.isFinite(d.pp)?d.pp:0,PP_FAM);m.masterCorrect=0;m.masterRounds=[];m.masterTypes=[];up="Familiar"}
+ if(d.streak>=10&&!d.leg){d.leg=1;if(st(k)<4)d.stage=4;up="Legendary"}
+ if(d.streak>=20&&!d.myth){d.myth=1;d.leg=1;if(st(k)<4)d.stage=4;up="Mythical"}
+ save();if(up){try{window.kqToast&&kqToast(up==="Mythical"?"\u{1F31F}":up==="Legendary"?"\u{1F3C5}":"\u{1F4C8}",k+" is now "+up,d.streak+" correct in a row!");checkLessons()}catch(e){}}
+ return up}
+/* Boss sentences. [k|reading] = blank to fill (a kanji of that village); {k|reading} = shown with furigana. */
+const BOSS_S={
+ k:{s:"[初|はじ]めて[刀|かたな]を{持|も}つ[前|まえ]に、{竹|たけ}を[切|き]って、{二|ふた}つに[分|わ]けた。[別|べつ]の{竹|たけ}は{友|とも}だちに{渡|わた}した。",en:"Before holding a sword for the first time, I cut a bamboo and divided it in two. I gave another bamboo to a friend."},
+ w:{s:"[海|うみ]で[泳|およ]いだ{弟|おとうと}は、[水|みず]で{体|からだ}を[洗|あら]って、[池|いけ]の{前|まえ}で[泣|な]いた。",en:"My little brother, who swam in the sea, washed his body with water and cried in front of the pond."},
+ t:{s:"[村|むら]の{学|がっ}[校|こう]は[森|もり]の{中|なか}にある。[休|やす]みの{日|ひ}に、[木|き]の{下|した}で[本|ほん]を{読|よ}む。",en:"The village school is in the forest. On days off, I read a book under a tree."},
+ i:{s:"[土|つち]の[坂|さか]を{登|のぼ}ると、[石|いし]と[岩|いわ]が{多|おお}い。[地|じ]{面|めん}に[砂|すな]も{見|み}えた。",en:"Climbing the dirt slope, there are many stones and rocks. Sand was also visible on the ground."},
+ f:{s:"[火|ひ]の[炎|ほのお]で{魚|さかな}を[焼|や]いた。[灯|あかり]は[熱|あつ]く、[灰|はい]が{舞|ま}った。",en:"I grilled fish over the flames of the fire. The lamp was hot, and ashes drifted."},
+ a:{s:"[空|そら]の[雲|くも]が[風|かぜ]で{流|なが}れ、[天|てん]{国|ごく}の[星|ほし]が[光|ひか]る。",en:"Clouds in the sky drift on the wind, and the stars of heaven shine."}};
+function kqParse(str){const out=[],re=/\[(.)\|([^\]]+)\]|\{([^|}]+)\|([^}]+)\}|([^\[{]+)/g;let m;while((m=re.exec(str))){if(m[1])out.push({b:1,k:m[1],r:m[2]});else if(m[3])out.push({k:m[3],r:m[4]});else out.push({t:m[5]})}return out}
+(function(){const c=document.createElement("style");c.textContent=
+ "#m .kq-bs-s{font-size:22px;line-height:2.6;margin:8px 0;text-align:center}#m .kq-bs-s rt{font-size:.45em;color:#d8c9a0}"+
+ "#m ruby.kq-bs>span{display:inline-block;min-width:1.1em;color:transparent;border-bottom:2px solid #8a7440}#m ruby.kq-bs.cur>span{border-bottom-color:#fff}"+
+ "#m ruby.kq-bs.ok{color:#7fd67f}#m ruby.kq-bs.bad{color:#ff8a80}"+
+ "#m .kq-chip[data-tier=Legendary]{--stc:#d4a017;color:#2b1d00}#m .kq-chip[data-tier=Mythical]{--stc:#8e44ad}";
+ document.head.appendChild(c)})();
+function kqBossChallenge(e){
+ const r=e.vr||S.r,B=BOSS_S[r];if(!B)return fight(e);
+ const toks=kqParse(B.s),blanks=toks.filter(t=>t.b),pool=regionKanji(r),res=[];let i=0,miss=0;
+ const sentence=()=>toks.map(t=>{
+  if(t.t)return t.t;
+  if(!t.b)return`<ruby>${t.k}<rt>${t.r}</rt></ruby>`;
+  const bi=blanks.indexOf(t);
+  if(bi<i||i>=blanks.length)return`<ruby class="kq-bs ${res[bi]?"ok":"bad"}">${t.k}<rt>${t.r}</rt></ruby>`;
+  return`<ruby class="kq-bs${bi===i?" cur":""}"><span>\uFF3F</span><rt>${t.r}</rt></ruby>`}).join("");
+ const done=()=>{const perfect=miss===0;
+  show(`<div class="big">${perfect?"\u{1F31F}":"\u{1F4D6}"}</div><b>${perfect?"Flawless!":"Trial complete"}</b><div class="kq-bs-s">${sentence()}</div><p><small>${B.en}</small></p><p>${blanks.length-miss}/${blanks.length} correct.${perfect?" The ward cracks: the boss starts at 70% HP.":" The ward holds, but the boss awaits."}</p><button id="bsW">Face the boss</button>`);
+  $("#bsW").onclick=()=>fight(e,{weak:perfect})};
+ const ask=(msg="")=>{
+  if(i>=blanks.length)return done();
+  const b=blanks[i],opts=shuf([b.k,...shuf(pool.filter(x=>x!==b.k)).slice(0,3)]);
+  show(`<b>\u{1F4DC} Sentence Trial \u00B7 ${i+1}/${blanks.length}</b><div class="kq-bs-s">${sentence()}</div><p>${msg}Which kanji is read <b>${b.r}</b> here?</p>`+opts.map(o=>`<button class="c k" data-v="${o}">${o}<small>${K[o].m}</small></button>`).join(""));
+  KQ_ANS={a:b.k};bind(v=>{
+   const ok=v===b.k,d=S.kn[b.k];
+   if(d){d.last=++S.turn;if(ok){d.ok=(d.ok||0)+1;d.wk=Math.max(0,(d.wk||0)-1)}else{d.miss=(d.miss||0)+1;d.wk=(d.wk||0)+1}}
+   const up=kqStreak(b.k,ok);if(!ok)miss++;res[i]=ok;i++;save();
+   ask(ok?`\u2705 ${b.k} (${K[b.k].m}).${up?` \u{1F4C8} ${b.k} is now ${up}!`:""}<br>`:`\u274C It was ${b.k} (${K[b.k].m}).<br>`)})};
+ show(`<div class="big">\u{1F4DC}</div><b>Seal Ward: Sentence Trial</b><p>The guardian of ${RG[r].n} hides a riddle in a sentence. Fill each blank with the kanji that matches the reading above it. A flawless trial weakens the boss (it starts at 70% HP), and every answer counts toward your kanji streaks.</p><button id="bsGo">Begin the trial</button><button id="bsDirect">Skip to the boss fight</button>`);
+ $("#bsGo").onclick=()=>ask();$("#bsDirect").onclick=()=>fight(e)}
+function fight(e,opt){
  const kn=KS.filter(k=>S.kn[k]&&(e.vr?reg(k)===e.vr:(RG[S.r].dg||RK(k))));if(!kn.length){say("You",[RG[S.r].dg&&!e.vr?"You have not learned any kanji yet. Visit a village guide first!":"You have not been taught any kanji of this village yet. Talk to the local guide first!"]);return}
  const boss=e.t==="o",elite=!!e.elite||e.t==="e";
  const limit=boss?10:elite?5:3;
  const monsterDefense=boss?4:elite?2:1;
  const attack=boss?14:elite?9:5;
  const hit=Math.max(1,weaponPower()-monsterDefense);
- const mx=hit*(boss?6:elite?3:2);let hp=mx,turn=0,correct=0,cb=0;const promoNotes=[];
+ const mx=hit*(boss?6:elite?3:2);let hp=opt&&opt.weak?Math.max(1,Math.ceil(mx*.7)):mx,turn=0,correct=0,cb=0;const promoNotes=[];
  const wk=weak(kn);
  if(!Number.isFinite(S.hp)||S.hp<=0)S.hp=maxHP();
  const render=(note,body)=>{
@@ -1418,10 +1471,10 @@ function fight(e){
  const resolve=(v,q,k)=>{
   if(v===q.a){let pn="";correct++;const dmg=Math.max(1,weaponPower()-monsterDefense);hp=Math.max(0,hp-dmg);
    if(q.vocab){q.word.combatCorrect=(q.word.combatCorrect||0)+1;q.word.combatLast=Date.now()}
-   else{const d=S.kn[k];d.last=++S.turn;d.ok=(d.ok||0)+1;d.wk=Math.max(0,(d.wk||0)-1);const pc=practiceCredit(k);pn=practiceNote(pc,k);if(pc&&pc.stage)promoNotes.push(k+" → "+SN[pc.stage])}
+   else{const d=S.kn[k];d.last=++S.turn;d.ok=(d.ok||0)+1;d.wk=Math.max(0,(d.wk||0)-1);const pc=practiceCredit(k);pn=practiceNote(pc,k);if(pc&&pc.stage)promoNotes.push(k+" → "+SN[pc.stage]);const su=kqStreak(k,1);if(su)promoNotes.push(k+" → "+su+" (streak)")}
    cb++;save();if(hp<=0)return win();return ask(`✅ Correct! ${q.vocab?`${q.word.jp} vocabulary`:`${k}`} deals ${dmg} damage.${pn}`)}
   if(q.vocab){q.word.combatMiss=(q.word.combatMiss||0)+1;q.word.combatLast=Date.now()}
-  else{const d=S.kn[k];d.last=++S.turn;d.miss=(d.miss||0)+1;d.wk=(d.wk||0)+1}
+  else{const d=S.kn[k];d.last=++S.turn;d.miss=(d.miss||0)+1;d.wk=(d.wk||0)+1;kqStreak(k,0)}
   cb=0;save();return monsterTurn(`❌ Not quite. Correct answer: ${q.x}.`);
  };
  ask(boss?`The ${e.n} guards a fragment of the Forgotten Learning Shrine. Recover the seal!`:elite?`An elite ${e.n} challenges you!`:`A ${e.n} appears!`);
@@ -1432,6 +1485,7 @@ function act(e){if(e.t=="s"){const r=RG[S.r];if(!S[r.fl])say(e.n,r.intro,()=>{S[
  else if(e.t=="pt")travel(e);
  else if(e.t=="o"&&(S.kills[e.vr||S.r]||0)<3)say("Sealed Gate",["The gate is sealed by the Void. Defeat the three monsters in "+RG[e.vr||S.r].n+" first."]);
  else if(e.t=="o"&&bossLocked(e.vr||S.r))say("Sealed Gate",bossGateLines(e.vr||S.r));
+ else if(e.t=="o"&&BOSS_S[e.vr||S.r])kqBossChallenge(e);
  else fight(e)}
 function mv(dx,dy){if(!$("#m").hidden||P.moving||!P.ready)return;const x=S.px+dx,y=S.py+dy,t=P.layer.getTileAt(x,y);if(!t)return;
  if(t.index%6===3&&S.r==="k"&&!S.civ.water){S.civ.water=true;save();hud();refreshVillage();show(`<div class="big">💧</div><b>First Discovery: Water!</b><p>You found a natural pond in Katana Village. Water is the first resource your civilization can use.</p><p>Collect water with a Bucket, then gather Wood to prepare your next discovery: Fire.</p><button id="waterDone">Continue</button>`);$("#waterDone").onclick=hide;return}
@@ -1557,7 +1611,7 @@ function enhance(m){
  m.querySelectorAll('button[data-v^="kanji:"]').forEach(b=>{const k=b.dataset.v.slice(6);if(S.kn[k]){b.dataset.stage=st(k);b.style.setProperty("--sg",st(k));const i=document.createElement("i");i.className="kq-pip";b.append(i)}});
  if(t&&/Kanji Journal/.test(t.textContent||"")&&m.querySelector(".g .k")){const c=[0,0,0,0,0];KS.forEach(k=>c[S.kn[k]?st(k):0]++);const n=KS.length,nm=["","Discovered","Learning","Familiar","Mastered"],h=document.createElement("div");
   h.innerHTML=`<div class="kq-seg">${[1,2,3,4].map(i=>`<i data-stage="${i}" style="width:${c[i]/n*100}%;background:var(--stc)"></i>`).join("")}</div><div class="kq-leg">${[1,2,3,4].map(i=>`<span data-stage="${i}">${nm[i]} ${c[i]}</span>`).join("")}<span>Locked ${c[0]}</span></div>`;const nv=m.querySelector(".journal-nav");nv&&nv.after(h)}
- const big=m.querySelector(".big");if(big&&!t){const k=big.textContent.trim();if(K[k]&&S.kn[k]){const c=document.createElement("div");c.style.textAlign="center";c.innerHTML=`<span class="kq-chip" data-stage="${st(k)}">${SN[st(k)]}</span>`;big.before(c)}}}
+ const big=m.querySelector(".big");if(big&&!t){const k=big.textContent.trim();if(K[k]&&S.kn[k]){const c=document.createElement("div");c.style.textAlign="center";c.innerHTML=`<span class="kq-chip" data-stage="${st(k)}" data-tier="${kqTier(k)}">${kqTier(k)}</span>`;big.before(c)}}}
 const _show=show;window.show=function(h){window.KQ_ANS=null;_show(h);try{enhance($("#m"))}catch(e){console.warn("skin",e)}};
 /* ---------- quiz feedback: correct glows, wrong shakes, answer highlighted ---------- */
 function fx(b,A,go){const ans=String(A.a).trim(),ok=b.textContent.trim()===ans;$$("#m .c").forEach(x=>{x.disabled=true;if(x.textContent.trim()===ans)x.classList.add("kq-right")});if(!ok)b.classList.add("kq-wrong");
@@ -2365,13 +2419,18 @@ window.kqOpenProgress=open;
  const mq=matchMedia("(max-width:720px),(max-height:520px) and (pointer:coarse)"),$q=s=>document.querySelector(s);
  const header=$q("header"),hdr=header.lastElementChild,hud=$q("#hud"),lay=$q(".layout"),app=$q("#app"),game=$q("#game");
  const menu=document.createElement("div");menu.id="kqMenu";menu.hidden=true;
- menu.innerHTML='<div class="mbox"><div class="mtop"><b>☰ Menu</b> <small style=opacity:.6;font-size:.6em>build 11-20a</small><button id="kqMenuX" type="button">✕ Close</button></div><div class="mhud"></div><div class="mbtns"></div></div>';
+ menu.innerHTML='<div class="mbox"><div class="mtop"><b>☰ Menu</b> <small style=opacity:.6;font-size:.6em>build 11-20a</small><span class="mact"><button id="kqDevBtn" type="button" aria-pressed="false">🛠 Dev</button><button id="kqMenuX" type="button">✕ Close</button></span></div><div class="mhud"></div><div class="mbtns"></div></div>';
  document.body.appendChild(menu);
  const btn=document.createElement("button");btn.id="kqMenuBtn";btn.type="button";btn.textContent="☰ Menu";btn.setAttribute("aria-label","Open menu");game.appendChild(btn);
  const apply=()=>{if(mq.matches){menu.querySelector(".mhud").appendChild(hud);menu.querySelector(".mbtns").appendChild(hdr)}else{app.insertBefore(hud,lay);header.appendChild(hdr);menu.hidden=true}};
  (mq.addEventListener?mq.addEventListener("change",apply):mq.addListener(apply));apply();
  btn.addEventListener("click",e=>{e.stopPropagation();menu.hidden=false});
  $q("#kqMenuX").onclick=()=>menu.hidden=true;
+ const dev=document.createElement("div");dev.id="kqDev";dev.hidden=true;document.body.appendChild(dev);let devT=0;
+ const devOn=(()=>{try{return localStorage.getItem("kqDev")==="1"}catch(e){return false}})();
+ const devSet=on=>{const b=$q("#kqDevBtn");b.setAttribute("aria-pressed",on);dev.hidden=!on;clearInterval(devT);try{localStorage.setItem("kqDev",on?"1":"0")}catch(e){}
+  if(on)devT=setInterval(()=>{try{const f=P&&P.sc&&P.sc.game?Math.round(P.sc.game.loop.actualFps):"-";dev.textContent="DEV  fps "+f+"\nregion "+S.r+"  tile "+S.px+","+S.py+"\nhold "+(typeof kqHeld!=="undefined"?kqHeld.length:0)}catch(e){dev.textContent="DEV (no state yet)"}},250)};
+ $q("#kqDevBtn").onclick=e=>{e.stopPropagation();devSet($q("#kqDevBtn").getAttribute("aria-pressed")!=="true")};if(devOn)devSet(true);
  menu.addEventListener("click",e=>{if(e.target===menu||(e.target.closest(".mbtns")&&e.target.closest("button")))menu.hidden=true});
 }catch(e){console.warn("menu",e)}})();
 </script><script>
