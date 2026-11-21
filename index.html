@@ -386,7 +386,7 @@ html[data-theme=contrast] #m small,html[data-theme=contrast] .stat,html[data-the
 /* motion */
 body.kq-rm *,body.kq-rm *:before,body.kq-rm *:after{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.kq-stage,.kq-stage *,#kqToast div,.kq-sparks i{animation:none!important;transition:none!important}}
-@media(max-width:480px){.kq-stage{min-height:190px}.kq-boss .kq-battle-portrait{width:110px;height:147px}#kqMini{flex-wrap:wrap;max-width:calc(100% - 16px)}}
+@media(max-width:480px){.kq-stage{min-height:190px}.kq-boss .kq-battle-portrait{width:110px;height:147px}#kqMini{flex-wrap:wrap;gap:4px;max-width:calc(100% - 16px)}#kqMini>span{padding:5px 8px;font-size:11px}#kqMini .mh{width:92px;height:22px}#kqMini .mh b{line-height:22px}}
 
 </style><style>
 /* PHASE 24 — tower */
@@ -593,8 +593,8 @@ RG.f.po=" The portal 🌀 now waits where the guardian stood, at the east gate o
 RG.a.po=" The return portal 🌀 now waits where the guardian stood, at the west gate of Dungeon 4 – step in to return to Katana Village.";
 /* Learning gates the map: a village exit stays sealed until all of its lessons are done; Ishi and the Water Kingdom also need the previous guardian defeated. */
 const ENTRY_REQ={i:"k",w:"i",t:"w",f:"t",a:"f"};
-function lessonsDone(r){return untaughtIn(r).length===0&&taughtIn(r).every(k=>st(k)>=2)}
-function gateBlock(from,nb){const g=RG[from];if(g&&!g.dg&&!lessonsDone(from)){const n=regionKanji(from).length,t=taughtIn(from).length;return["The way out of "+g.n+" is sealed until you finish all of its lessons.",t<n?"Kanji taught: "+t+"/"+n+". Talk to "+g.npc+" to learn the next ones.":"All kanji are taught. Practise them in battles and gathering until each reaches Learning."]}
+function lessonsDone(r){return untaughtIn(r).length===0&&taughtIn(r).every(k=>st(k)>=FAM)}
+function gateBlock(from,nb){const g=RG[from];if(g&&!g.dg&&!lessonsDone(from)){const n=regionKanji(from).length,t=taughtIn(from).length;const low=taughtIn(from).filter(k=>st(k)<FAM).map(k=>k+" ("+SN[st(k)]+")");return["The way out of "+g.n+" is sealed until you finish all of its lessons and every kanji is Familiar.",t<n?"Kanji taught: "+t+"/"+n+". Talk to "+g.npc+" to learn the next ones.":"All kanji are taught. Practise them in battles and gathering until each reaches Familiar."+(low.length?" Still below Familiar: "+low.join(", ")+".":"")]}
  const q=ENTRY_REQ[nb];if(q&&!S[RG[q].win])return["A sealed path blocks the way to "+RG[nb].n+".","Restore "+RG[q].n+" first by defeating its guardian."];return null}
 /* Phase 6: six regional seals restore the Forgotten Learning Shrine. */
 const STORY_ORDER=["k","w","t","i","f","a"];
@@ -735,7 +735,8 @@ S.lessonDue=S.lessonDue||{};
 KS.forEach(k=>{const d=S.kn[k];if(d&&!Number.isFinite(d.pp))d.pp=PP_AT[st(k)]||0});
 const regionKanji=r=>KS.filter(k=>reg(k)===r),taughtIn=r=>regionKanji(r).filter(k=>S.kn[k]),untaughtIn=r=>regionKanji(r).filter(k=>!S.kn[k]),nextBatch=r=>untaughtIn(r).slice(0,LESSON_SIZE);
 const familiarCount=r=>regionKanji(r).filter(k=>S.kn[k]&&st(k)>=FAM).length;
-const bossLocked=r=>familiarCount(r)<regionKanji(r).length;
+const mythicCount=r=>regionKanji(r).filter(k=>S.kn[k]&&rar(k)>=3).length;
+const bossLocked=r=>mythicCount(r)<regionKanji(r).length;
 function batchReady(r){const t=taughtIn(r);return t.length>0&&untaughtIn(r).length>0&&t.slice(-LESSON_SIZE).every(k=>st(k)>=2)}
 function lessonDueNow(){return !!(S.lessonDue&&S.lessonDue[S.r]&&nextBatch(S.r).length)}
 function checkLessons(){const due=[];REGIONS_ALL.forEach(r=>{if(S[RG[r].fl]&&!S.lessonDue[r]&&batchReady(r)){S.lessonDue[r]=true;due.push(r)}});
@@ -786,8 +787,8 @@ function guideMenu(r,note=""){
 function lessonPicker(r){show(`<b>🔁 Review a lesson</b><p>Choose a kanji.</p>`+taughtIn(r).map(k=>`<button class="c k" data-v="${k}">${k}<small>${K[k].m}</small></button>`).join("")+`<br><button id="lpb">◂ Back</button>`);
  bind(k=>{show(lessonCard(k,"📖 Lesson · "+RG[r].n,`<button id="lpb2">◂ Back</button>`));$("#lpb2").onclick=()=>lessonPicker(r)});$("#lpb").onclick=()=>guideMenu(r)}
 /* Boss seal and building upgrades ask for Familiar kanji (mild: Familiar, not Mastered). */
-function bossGateLines(r){const all=regionKanji(r),low=all.filter(k=>S.kn[k]&&st(k)<FAM).map(k=>`${k} (${SN[st(k)]})`),un=all.filter(k=>!S.kn[k]).length;
- return ["The seal of the Void answers only to real understanding. Bring every kanji of this village to Familiar ("+familiarCount(r)+"/"+all.length+").",low.length?"Still below Familiar: "+low.join("、")+".":"",un?un+" kanji have not been taught yet. Ask the guide for the next lesson.":"","Practise in battles and gathering, or take a formal review in the Kanji Journal."].filter(Boolean)}
+function bossGateLines(r){const all=regionKanji(r),low=all.filter(k=>S.kn[k]&&rar(k)<3).map(k=>`${k} (${RC[rar(k)]} ${RAR[rar(k)]})`),un=all.filter(k=>!S.kn[k]).length;
+ return ["The seal of the Void answers only to real understanding. Bring every kanji of this village to Mythical ("+mythicCount(r)+"/"+all.length+").",low.length?"Not Mythical yet: "+low.join("、")+".":"",un?un+" kanji have not been taught yet. Ask the guide for the next lesson.":"","Mythical needs the kanji Mastered, 20 correct answers (forges count) and no recent misses. Practise in battle, and forge Familiar kanji at the blacksmith (2🪙 + 1 Iron Ore)."].filter(Boolean)}
 function villageReq(r,b,l){const a=villageReq0(r,b,l),need=VKN[l]||0,have=familiarCount(r),k=have>=need?"":`bring ${need} ${RG[r].n} kanji to Familiar or Mastered (${have}/${need})`;return a&&k?a+" and "+k:(a||(k?k[0].toUpperCase()+k.slice(1):""))}
 /* Discoveries that contain curriculum kanji need those kanji at Familiar. */
 const civLinked=d=>[...new Set([...d.label].filter(ch=>KS.includes(ch)))];
@@ -835,7 +836,7 @@ function startFormalReview(){const pool=KS.filter(k=>S.kn[k]);if(!pool.length){j
   let k=chooseReviewKanji();if(round[k]?.total>=2){const alternatives=pool.filter(x=>(round[x]?.total||0)<2);if(alternatives.length)k=alternatives[Math.floor(Math.random()*alternatives.length)]}
   const q=formalQuestion(k);show(`<b>📘 Formal Review · Question ${n+1}/5</b><p><small>${masteryLabel(k)} · ${k}</small></p><h2>${q.prompt}</h2>`+q.options.map((o,i)=>`<button class="c sh" data-v="${i}">${o}</button>`).join(""));KQ_ANS={a:q.answer};bind(i=>{const ok=q.options[+i]===q.answer;kqStreak(k,ok);round[k]=round[k]||{correct:0,total:0,types:[]};round[k].total++;if(ok){correct++;round[k].correct++;round[k].types.push(q.type)}n++;show(`<b>${ok?"✅ Correct":"❌ Not quite"}</b><p>${ok?"Good recall!":"Correct answer: "+q.answer}</p><button id="reviewNext">${n===5?"See results":"Next question"}</button>`);$("#reviewNext").onclick=ask});};ask();}
 
-const rar=k=>{const d=S.kn[k]||{},o=d.ok||0,base=o>=20&&!d.wk?3:o>=10?2:o>=3?1:0;return Math.min(base,GEAR_STAGE_CAP[st(k)]??0)};
+const rar=k=>{const d=S.kn[k]||{},o=(d.ok||0)+(d.fg||0),base=o>=20&&!d.wk?3:o>=10?2:o>=3?1:0;return Math.min(base,GEAR_STAGE_CAP[st(k)]??0)};
 const gearTier=g=>g.tier??rar(g.k),gearLevel=g=>g.level||0;
 const gw=()=>{const g=S.gear[S.ew];return g?(g.tier!=null?WB[g.tier]+gearLevel(g)*3:WB[rar(g.k)]):0},ga=()=>{const g=S.gear[S.ea];return g?(g.tier!=null?AB[g.tier]+gearLevel(g)*5:AB[rar(g.k)]):0};
 const gearName=g=>`${RC[gearTier(g)]} ${RAR[gearTier(g)]} ${g.k} ${g.s=="w"?"Blade":"Armor"}${gearLevel(g)?" +"+gearLevel(g):""}`;
@@ -885,7 +886,7 @@ function gather(t,x,y){
  const finishGather=()=>{save();hud();show(`<b>${emoji} Gathering complete!</b><p>You finished all 5 rounds.</p><p>Correct answers: ${correct}/5</p>${gatherPromos.length?`<p>📈 ${gatherPromos.join(" · ")}</p>`:""}<p>Resources received: <b>+${earned} ${emoji} ${label}</b></p><p><small>The ${node} will respawn when you revisit the village.</small></p><button id=done>Continue</button>`);$("#done").onclick=hide};
  const skipG=()=>{const n=5-round;for(let i=0;i<n;i++){if(kind==="t")S.inv.wood++;else if(kind==="w")S.inv.water++;else grantRegionalOre(kind,1)}earned+=n;round=5;save();hud();finishGather()};
  const ask=()=>{if(round>=5){fieldVocabularyNote(finishGather);return}
-  const k=learned[Math.floor(Math.random()*learned.length)],q=Q(k,Math.floor(Math.random()*3)),thisRound=round+1;
+  const k=kqPickK(learned),q=Q(k,Math.floor(Math.random()*3)),thisRound=round+1;
   show(`<b>${emoji} ${label} Gathering Test</b><p>Round ${thisRound} of 5</p><div class=bar><i style="width:${round/5*100}%"></i></div><p><b>${k}</b> · ${q.t}</p>`+q.o.map((a,j)=>`<button class="c" data-v="${j}">${a}</button>`).join(""));
   gmSkipBtn(skipG);KQ_ANS={a:q.a};bind(j=>{const answer=q.o[+j],isRight=answer===q.a;let pn="";if(isRight){correct++;const d=S.kn[k];d.last=++S.turn;d.ok=(d.ok||0)+1;const pc=practiceCredit(k);pn=practiceNote(pc,k);if(pc&&pc.stage)gatherPromos.push(k+" → "+SN[pc.stage]);const su=kqStreak(k,1);if(su)gatherPromos.push(k+" → "+su+" (streak)")}else kqStreak(k,0);earned++;if(kind==="t")S.inv.wood++;else if(kind==="w")S.inv.water++;else grantRegionalOre(kind,1);round++;save();hud();const feedback=isRight?"✅ Correct! +1 "+emoji+" "+label+"."+pn:"📘 Not quite. The answer was "+q.a+". +1 "+emoji+" "+label+" for completing the round.";show(`<b>${emoji} Round ${thisRound}/5</b><p>${feedback}</p><button id=next>${round===5?"See results":"Next round"}</button>`);$("#next").onclick=ask});};ask();
 }
@@ -1074,15 +1075,15 @@ new Phaser.Game({type:KQ_IOS?Phaser.CANVAS:Phaser.AUTO,parent:"game",width:512,h
  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
  scene:{create(){tileset(this);
   sprites(this);P.sc=this;P.ready=1;kqClickInit(this);loadRegion()}}});
-function hud(){{const sr=RG[S.r];$("#skipVillage").hidden=!!(S[sr.win]||sr.dg);$("#skipVillage").textContent="⏭ Skip "+sr.n}$("#lv").innerHTML="⭐ <strong>Lv "+S.lv+"</strong>";$("#xp").style.width=Math.max(0,Math.min(100,S.xp/(S.lv*40)*100))+"%";$("#gd").innerHTML="🪙 <strong>"+S.gold+"</strong> · 🧪 "+S.pot+" · 💡 "+S.hint+" · ⚔️ "+SWN[S.sw];rankHud();$("#iv").innerHTML="❤️ <strong>"+S.hp+" / "+maxHP()+" HP</strong> · ⚔️ "+weaponPower()+" ATK · 🛡 "+armorDefense()+" DEF";
+function hud(){{const sr=RG[S.r];$("#skipVillage").hidden=!!(S[sr.win]||sr.dg);$("#skipVillage").textContent="⏭ Skip "+sr.n}$("#lv").innerHTML="⭐ <strong>Lv "+S.lv+"</strong>";$("#xp").style.width=Math.max(0,Math.min(100,S.xp/(S.lv*40)*100))+"%";$("#gd").innerHTML="🪙 <strong>"+S.gold+"</strong> · 🪨 <strong>"+((S.inv&&S.inv.ore)||0)+"</strong> · 🧪 "+S.pot+" · 💡 "+S.hint+" · ⚔️ "+SWN[S.sw];rankHud();$("#iv").innerHTML="❤️ <strong>"+S.hp+" / "+maxHP()+" HP</strong> · ⚔️ "+weaponPower()+" ATK · 🛡 "+armorDefense()+" DEF";
  const r=RG[S.r],nf=KS.filter(k=>RK(k)&&K[k].p.length==2).length,cr=KS.filter(k=>RK(k)&&S.kn[k]&&S.kn[k].cr).length,md=S.kills[S.r]||0;
- $("#hint").textContent=r.dg?"🌲 "+r.n+" — defeat the 3 monsters 👾 ("+Math.min(3,md)+"/3 this trip). Edge openings lead to other maps.":!S[r.fl]?"Quest: talk to "+r.npc+" (walk into them).":lessonDueNow()?"📚 A new lesson is ready: talk to "+r.npc+".":cr<KS.filter(k=>RK(k)&&K[k].p.length==2&&S.kn[k]).length?"Quest: forge kanji at the blacksmith 🔨 ("+cr+"/"+nf+").":cr<nf?"Quest: learn more kanji from "+r.npc+" ("+taughtIn(S.r).length+"/"+regionKanji(S.r).length+" taught).":md<3?"Quest: defeat the 3 monsters 👾 ("+md+"/3).":!S[r.win]?(bossLocked(S.r)?"Quest: bring every local kanji to Familiar to break the boss seal ("+familiarCount(S.r)+"/"+regionKanji(S.r).length+").":"Quest: face the boss in the north."):r.hn}
+ $("#hint").textContent=r.dg?"🌲 "+r.n+" — defeat the 3 monsters 👾 ("+Math.min(3,md)+"/3 this trip). Edge openings lead to other maps.":!S[r.fl]?"Quest: talk to "+r.npc+" (walk into them).":lessonDueNow()?"📚 A new lesson is ready: talk to "+r.npc+".":taughtIn(S.r).length<regionKanji(S.r).length?"Quest: learn more kanji from "+r.npc+" ("+taughtIn(S.r).length+"/"+regionKanji(S.r).length+" taught).":md<3?"Quest: defeat the 3 monsters 👾 ("+md+"/3).":!S[r.win]?(bossLocked(S.r)?"Quest: bring every local kanji to Mythical to break the boss seal ("+mythicCount(S.r)+"/"+regionKanji(S.r).length+").":"Quest: face the boss in the north."):r.hn}
 function questProgress(r){
  const keys=KS.filter(k=>RK(k));
  const practiced=keys.filter(k=>(S.kn[k]?.ok||0)>=2).length;
  const forged=keys.filter(k=>S.kn[k]?.cr).length;
  const kills=S.kills[r]||0;
- const two=keys.filter(k=>K[k].p.length==2),twoT=two.filter(k=>S.kn[k]),fc=familiarCount(r);const stage=!S[RG[r].fl]?"Speak with the local guide":forged<twoT.length?`Forge local Kanji (${forged}/${two.length})`:forged<two.length?`Learn more Kanji with the guide (${taughtIn(r).length}/${keys.length} taught)`:kills<3?`Defeat local monsters (${kills}/3)`:!S[RG[r].win]?(fc<keys.length?`Bring every local Kanji to Familiar (${fc}/${keys.length})`:"Defeat the region boss"):"Region restored";
+ const two=keys.filter(k=>K[k].p.length==2),twoT=two.filter(k=>S.kn[k]),fc=familiarCount(r);const stage=!S[RG[r].fl]?"Speak with the local guide":taughtIn(r).length<keys.length?`Learn more Kanji with the guide (${taughtIn(r).length}/${keys.length} taught)`:kills<3?`Defeat local monsters (${kills}/3)`:!S[RG[r].win]?(mythicCount(r)<keys.length?`Bring every local Kanji to Mythical (${mythicCount(r)}/${keys.length})`:"Defeat the region boss"):"Region restored";
  return {keys,practiced,kills,forged,stage};
 }
 function quests(note=""){
@@ -1090,16 +1091,16 @@ function quests(note=""){
  const r=S.r,reg=RG[r],d=S.questData[r],p=questProgress(r),need=p.keys.filter(k=>K[k].p.length==2).length;
  const practiceDone=p.practiced>=3,slayerDone=p.kills>=3;
  const card=(title,desc,accepted,done,claimed,id,reward)=>`<div class="section-label">${title}</div><p>${desc}</p><p><small>${!accepted?"Not accepted":claimed?"Reward claimed":done?"Complete — reward ready":"In progress"} · Reward: ${reward}</small></p>${!accepted?`<button class="c" data-v="accept:${id}">Accept quest</button>`:done&&!claimed?`<button class="c" data-v="claim:${id}">Claim reward</button>`:""}`;
- show(`<b>📜 Quest Log · ${reg.n}</b><p>${note||"Track the region's main story and take on local requests."}</p><div class="section-label">⭐ Main Quest — Restore ${reg.n}</div><p>${p.stage}</p><p><small>Guide → forge ${need} local Kanji → defeat 3 monsters → bring all local Kanji to Familiar → defeat the boss.</small></p><p><b>Status:</b> ${S[reg.win]?"Completed":"In progress"}</p>`+
- card("📘 Discovery Quest — Local Scholar",`Answer questions correctly for at least 3 local Kanji. Progress: ${Math.min(3,p.practiced)}/3.`,d.practiceAccepted,practiceDone,d.practiceClaimed,"practice","40 XP + 20 coins")+
- card("📚 Vocabulary Quest — Field Research",`Correctly study 3 different collected discovery words while exploring this region. Progress: ${Math.min(3,d.vocabWords.length)}/3.`,d.vocabAccepted,d.vocabWords.length>=3,d.vocabClaimed,"vocab","30 XP + 15 coins")+
- card("⚔️ Side Quest — Clear the Threat",`Defeat 3 monsters in ${reg.n}. Progress: ${Math.min(3,p.kills)}/3.`,d.slayerAccepted,slayerDone,d.slayerClaimed,"slayer","50 XP + 30 coins + 1 regional resource")+
+ show(`<b>📜 Quest Log · ${reg.n}</b><p>${note||"Track the region's main story and take on local requests."}</p><div class="section-label">⭐ Main Quest — Restore ${reg.n}</div><p>${p.stage}</p><p><small>Guide → learn the local Kanji → defeat 3 monsters → bring all local Kanji to Mythical → defeat the boss.</small></p><p><b>Status:</b> ${S[reg.win]?"Completed":"In progress"}</p>`+
+ card("📘 Discovery Quest — Local Scholar",`Answer questions correctly for at least 3 local Kanji. Progress: ${Math.min(3,p.practiced)}/3.`,d.practiceAccepted,practiceDone,d.practiceClaimed,"practice","40 XP + 20 coins + 2 Iron Ore")+
+ card("📚 Vocabulary Quest — Field Research",`Correctly study 3 different collected discovery words while exploring this region. Progress: ${Math.min(3,d.vocabWords.length)}/3.`,d.vocabAccepted,d.vocabWords.length>=3,d.vocabClaimed,"vocab","30 XP + 15 coins + 1 Iron Ore")+
+ card("⚔️ Side Quest — Clear the Threat",`Defeat 3 monsters in ${reg.n}. Progress: ${Math.min(3,p.kills)}/3.`,d.slayerAccepted,slayerDone,d.slayerClaimed,"slayer","50 XP + 30 coins + 3 Iron Ore + 1 regional resource")+
  `<p><b>🌌 Shrine seals:</b> ${STORY_ORDER.filter(x=>S.story.seals[x]).length}/6 recovered.</p><button id="storyOpen">🌌 Story Chronicle</button><button id="questClose">Close</button>`);
  bind(v=>{const [action,id]=v.split(":");if(action==="accept"){d[id+"Accepted"]=true;save();return quests("Quest accepted. Your progress will update as you explore.")}
  if(action==="claim"){
-  if(id==="practice"&&d.practiceAccepted&&!d.practiceClaimed&&practiceDone){d.practiceClaimed=true;const msg=gain(40,20);save();return quests("Discovery reward claimed! "+msg)}
-  if(id==="vocab"&&d.vocabAccepted&&!d.vocabClaimed&&d.vocabWords.length>=3){d.vocabClaimed=true;const msg=gain(30,15);save();return quests("Field Research reward claimed! "+msg)}
-  if(id==="slayer"&&d.slayerAccepted&&!d.slayerClaimed&&slayerDone){d.slayerClaimed=true;const tier=0;S.ores[r][tier]++;const msg=gain(50,30);save();return quests("Side quest reward claimed! "+msg+" +1 Common "+ORE_NAMES[r]+".")}
+  if(id==="practice"&&d.practiceAccepted&&!d.practiceClaimed&&practiceDone){d.practiceClaimed=true;S.inv.ore=(S.inv.ore||0)+2;const msg=gain(40,20);save();return quests("Discovery reward claimed! "+msg+" +2 "+MN.ore+".")}
+  if(id==="vocab"&&d.vocabAccepted&&!d.vocabClaimed&&d.vocabWords.length>=3){d.vocabClaimed=true;S.inv.ore=(S.inv.ore||0)+1;const msg=gain(30,15);save();return quests("Field Research reward claimed! "+msg+" +1 "+MN.ore+".")}
+  if(id==="slayer"&&d.slayerAccepted&&!d.slayerClaimed&&slayerDone){d.slayerClaimed=true;const tier=0;S.ores[r][tier]++;S.inv.ore=(S.inv.ore||0)+3;const msg=gain(50,30);save();return quests("Side quest reward claimed! "+msg+" +3 "+MN.ore+" and +1 Common "+ORE_NAMES[r]+".")}
  }});
  $("#storyOpen").onclick=storyChronicle;
  $("#questClose").onclick=hide;
@@ -1151,7 +1152,7 @@ function villageLevel(r,b){return ((S.villages||{})[r]||{})[b]||1}
 function villageReq0(r,b,l){const kills=S.kills[r]||0,boss=!!S[RG[r].win];if(l===2)return kills>=3?"":"Defeat 3 monsters in this region";if(l===3)return boss?"":"Defeat this region’s boss";if(l===4)return kills>=6?"":"Defeat 6 monsters in this region";if(l===5)return boss&&kills>=10?"":"Defeat the boss and 10 monsters in this region";return ""}
 function villageCost(r,l){return {gold:35*l,ore:l+1}}
 function villageBenefit(b,l){if(b==="workshop")return l>=5?"+2 bonus regional ore from monster rewards (plus the level 3 bonus)":l>=3?"+1 bonus regional ore from monster rewards":"Improved production facilities";return l>=5?"+20% monster coins and +10% XP":"+"+((l-1)*5)+"% monster coin rewards"}
-function upgradeVillage(r,b){const cur=villageLevel(r,b);if(cur>=5)return civilization("This building is already at maximum level.");const next=cur+1,req=villageReq(r,b,next),cost=villageCost(r,cur);if(req)return civilization(req+" before upgrading.");if(S.gold<cost.gold)return civilization("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return civilization("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");S.gold-=cost.gold;S.ores[r][0]-=cost.ore;S.villages[r][b]=next;save();hud();civilization(VILLAGE_BUILDINGS[r][b]+" upgraded to Level "+next+"!")}
+function upgradeVillage(r,b){const cur=villageLevel(r,b);if(cur>=5)return civilization("This building is already at maximum level.");const next=cur+1,req=villageReq(r,b,next),cost=villageCost(r,cur);if(req)return civilization(req+" before upgrading.");if(S.gold<cost.gold)return civilization("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return civilization("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");kqUpgradeTrial(r,b)}
 let civPage="main";
 function civilization(note=""){
  const keys=["k","w","t","i","f","a"];
@@ -1186,7 +1187,7 @@ function civilization(note=""){
 }
 /* ===== GM mode (hidden): tap the 刀 logo 5 times, or press Ctrl+Shift+G ===== */
 function gmApply(){save();refreshVillage();draw();hud()}
-function gmMasterKanji(){KS.forEach(k=>{S.kn[k]=Object.assign(S.kn[k]||{},{ok:Math.max(3,(S.kn[k]||{}).ok||0),cr:1,stage:4})})}
+function gmMasterKanji(){KS.forEach(k=>{S.kn[k]=Object.assign(S.kn[k]||{},{ok:Math.max(20,(S.kn[k]||{}).ok||0),wk:0,cr:1,stage:4})})}
 function gm(page="main",note=""){
  const B=(v,t,s)=>`<button class="c sh" data-v="${v}">${t}${s?`<small>${s}</small>`:""}</button>`;
  let h=`<b>🛠 GM Mode</b> <small>build 11-20a</small>${note?` <small>${note}</small>`:""}<p><small>Testing tools. Changes save immediately.</small></p>`;
@@ -1320,13 +1321,39 @@ function startDiscoveryVocabReview(level="All"){
   const w=questions[n];oldStages[w.id]=w.mastery;const q=makeQuestion(w);show(`<b>📚 ${level} Vocabulary Practice · ${n+1}/${questions.length}</b><p>${q.prompt}</p>`+q.choices.map((o,i)=>`<button class="c sh" data-v="${i}">${o}</button>`).join(""));KQ_ANS={a:q.answer};bind(i=>{const ok=q.choices[+i]===q.answer;if(ok)correct++;else missed.push(w);roundResults[w.id]=ok;n++;show(`<b>${ok?"✅ Correct":"❌ Not quite"}</b><p>${w.jp} (${w.reading}) means <b>${w.en}</b>.</p><button id="vocabNext">${n===questions.length?"See results":"Next word"}</button>`);$("#vocabNext").onclick=ask});
  };ask();
 }
-function det(k){const d=K[k];show(`<div class=big>${k}</div><p><b>${d.m}</b> · ${kqTier(k)} · gear rarity: ${RC[rar(k)]} ${RAR[rar(k)]} (Rare at 3 correct, Legendary at 10, Mythical at 20 with no recent misses; capped by stage: Learning → Rare, Familiar → Legendary, Mastered → Mythical) · practice ${Math.min(S.kn[k].pp||0,PP_FAM)}/${PP_FAM} (${S.kn[k].ok} correct answers, ${S.kn[k].miss||0} misses${S.kn[k].cr?", forged":""})</p><p>On’yomi: ${d.on} · Kun’yomi: ${d.kun}<br>Radical family: ${({k:"刀",w:"水",t:"木"})[reg(k)]}<br>Parts: ${d.p.join(" + ")}<br>Story: ${d.s}<br>Word: ${d.v}</p><small>Parts and stories are visual memory aids, not historical etymology.</small><br><button id=bb>◂ Back</button>`);$("#bb").onclick=()=>book()}
+function det(k){const d=K[k];show(`<div class=big>${k}</div><p><b>${d.m}</b> · ${kqTier(k)} · gear rarity: ${RC[rar(k)]} ${RAR[rar(k)]} (Rare at 3 correct answers, Legendary at 10, Mythical at 20 with no recent misses; each forge counts as 1 correct answer; capped by stage: Learning → Rare, Familiar → Legendary, Mastered → Mythical) · practice ${Math.min(S.kn[k].pp||0,PP_FAM)}/${PP_FAM} (${S.kn[k].ok} correct answers, ${S.kn[k].miss||0} misses${S.kn[k].fg?", forged ×"+S.kn[k].fg+" (counts toward rarity)":S.kn[k].cr?", forged":""})</p><p>On’yomi: ${d.on} · Kun’yomi: ${d.kun}<br>Radical family: ${({k:"刀",w:"水",t:"木"})[reg(k)]}<br>Parts: ${d.p.join(" + ")}<br>Story: ${d.s}<br>Word: ${d.v}</p><small>Parts and stories are visual memory aids, not historical etymology.</small><br><button id=bb>◂ Back</button>`);$("#bb").onclick=()=>book()}
 function smith(note=""){if(!S[RG[S.r].fl]){say("Blacksmith",["Speak with the elder first."]);return}
- show(`<div class="kq-dialog-head">${kqPortrait(1,1,"kq-dialog-portrait","Village blacksmith")}<b>Blacksmith</b></div><p>${note||"New services become available as your civilization makes discoveries."}</p><button class="c" data-v="f">🔨 Forge kanji</button><button class="c" data-v="c">🛠 Craft tools</button><button class="c" data-v="s">🛒 Shop</button>${S.civ.fire?'<button class="c" data-v="g">⚒ Forge equipment</button><button class="c" data-v="m">📦 Materials inventory</button>':'<p>🔒 Equipment forging — discover Fire first.</p>'}${S.civ.metal?'<button class="c" data-v="u">⬆ Upgrade equipment</button><button class="c" data-v="r">✨ Refine ore</button>':'<p>🔒 Upgrades & ore refining — discover Metalworking.</p>'}<br><button id=cl>Leave</button>`);
- bind(v=>v=="f"?forgeList():v=="c"?craft():v=="g"?gearForge():v=="m"?materials():v=="u"?upgradeGear():v=="r"?refineOre():shop());$("#cl").onclick=hide}
-function forgeList(){const L=KS.filter(k=>RK(k)&&K[k].p.length==2&&S.kn[k]&&!S.kn[k].cr);
- if(!L.length){smith("You have forged every kanji I know. Go on, hero!");return}
- show("<b>Blacksmith</b><p>Which kanji shall we forge? Each costs 1 "+MN[MAT[S.r]]+".</p>"+L.map(k=>`<button class="c k" data-v="${k}">${k}<small>${K[k].m}</small></button>`).join("")+"<br><button id=bkm>◂ Back</button>");bind(forge);$("#bkm").onclick=()=>smith()}
+ show(`<div class="kq-dialog-head">${kqPortrait(1,1,"kq-dialog-portrait","Village blacksmith")}<b>Blacksmith</b></div><p>${note||"New services become available as your civilization makes discoveries."}</p><button class="c" data-v="fr">🔨 FORGE</button><button class="c" data-v="c">🛠 Craft tools</button><button class="c" data-v="s">🛒 Shop</button>${S.civ.fire?'<button class="c" data-v="g">⚒ Forge equipment</button><button class="c" data-v="m">📦 Materials inventory</button>':'<p>🔒 Equipment forging — discover Fire first.</p>'}${S.civ.metal?'<button class="c" data-v="u">⬆ Upgrade equipment</button><button class="c" data-v="r">✨ Refine ore</button>':'<p>🔒 Upgrades & ore refining — discover Metalworking.</p>'}<br><button id=cl>Leave</button>`);
+ bind(v=>v=="fr"?forgeList():v=="c"?craft():v=="g"?gearForge():v=="m"?materials():v=="u"?upgradeGear():v=="r"?refineOre():shop());$("#cl").onclick=hide}
+/* Kanji forge: Familiar kanji only. Costs 2 gold + 1 Iron Ore and adds 1 correct-answer equivalent (d.fg) toward rarity. No XP, gold or item rewards. */
+const FORGE_GOLD=2,FORGE_ORE=1,FORGE_AT=[3,10,20];
+const forgeScore=k=>{const d=S.kn[k]||{};return (d.ok||0)+(d.fg||0)};
+function forgeBlock(k){const d=S.kn[k];
+ if(!d||st(k)<FAM)return k+" must reach Familiar first (3 correct answers in a row).";
+ const r=rar(k),cap=GEAR_STAGE_CAP[st(k)]??0;
+ if(r>=3)return "Already Mythical — nothing left to forge.";
+ if(r>=cap)return "A Familiar kanji can be forged up to Legendary. Master "+k+" to forge toward Mythical.";
+ if(forgeScore(k)>=FORGE_AT[2])return "Mythical also needs no recent misses — answer "+k+" correctly in battle to clear them.";
+ return ""}
+function forgeList(note=""){const L=KS.filter(k=>RK(k)&&S.kn[k]&&st(k)>=FAM),locked=KS.filter(k=>RK(k)&&S.kn[k]&&st(k)<FAM).length;
+ show(`<b>🔨 Forge Kanji</b> · 🪙 ${S.gold} · ${MN.ore} ${S.inv.ore}<p>${note||`Only Familiar kanji can be forged. Solve the parts puzzle, then pay ${FORGE_GOLD}🪙 + ${FORGE_ORE} ${MN.ore}. A successful forge counts as 1 correct answer toward rarity (Rare 3 · Legendary 10 · Mythical 20). It gives no XP or gold.`}</p>`+
+ (L.length?L.map(k=>`<button class="c k" data-v="${k}">${k}<small>${K[k].m} · ${RC[rar(k)]} ${RAR[rar(k)]} · ${forgeScore(k)}</small></button>`).join(""):"<p>No Familiar kanji here yet. Get a kanji right 3 times in a row in battle or gathering.</p>")+
+ (locked?`<p><small>${locked} more kanji here are not Familiar yet.</small></p>`:"")+"<br><button id=bkm>◂ Back</button>");
+ bind(k=>forgePanel(k));$("#bkm").onclick=()=>smith()}
+function forgePanel(k,note=""){const r=rar(k),why=forgeBlock(k),need=r<3?FORGE_AT[r]:null,lack=S.gold<FORGE_GOLD?"Not enough gold.":S.inv.ore<FORGE_ORE?"You need "+FORGE_ORE+" "+MN.ore+".":"";
+ show(`<div class=big>${k}</div><b>${K[k].m}</b>${note?`<p>${note}</p>`:""}<p>${RC[r]} <b>${RAR[r]}</b> · ${forgeScore(k)} correct-answer equivalents${S.kn[k].fg?` (${S.kn[k].fg} from forging)`:""}${need&&!why?` · next: ${RAR[r+1]} at ${need}`:""}</p>${why?`<p><small>${why}</small></p>`:""}<button class="c sh" data-v="go" ${why||lack?"disabled":""}>🔨 Forge · ${FORGE_GOLD}🪙 + ${FORGE_ORE} ${MN.ore}<small>${lack||"Finish the parts puzzle to forge. Adds 1 correct-answer equivalent toward rarity."}</small></button><br><button id=bkm>◂ Back</button>`);
+ bind(()=>forgePuzzle(k));$("#bkm").onclick=()=>forgeList()}
+function forgePuzzle(k){const why=forgeBlock(k);if(why)return forgePanel(k,why);
+ if(S.gold<FORGE_GOLD)return forgePanel(k,"Not enough gold.");
+ if(S.inv.ore<FORGE_ORE)return forgePanel(k,"You need "+FORGE_ORE+" "+MN.ore+". Buy one in the shop.");
+ const need=K[k].p,n=need.length,pool=["七","八","衤","刀","另","刂","口","力","水","木","氵","也","永","毎","立","先","亻","一","寸","交"];let o=[...need];
+ for(const x of shuf(pool)){if(o.length>=Math.max(6,n+3))break;if(!o.includes(x))o.push(x)}o=shuf(o);const pick=[];
+ const draw=()=>{const left=[...o];pick.forEach(p=>{const i=left.indexOf(p);if(i>-1)left.splice(i,1)});
+  show(`<b>🔨 Forge ${k} (${K[k].m})</b><p>Solve the puzzle: tap the ${n} part${n>1?"s":""} that make${n>1?"":"s"} this kanji. You only pay ${FORGE_GOLD}🪙 + ${FORGE_ORE} ${MN.ore} if you get it right.</p><div class=big>${pick.join(" + ")||"…"}</div>`+left.map(x=>`<button class="c k" data-v="${x}">${x}</button>`).join("")+`<br><button id=bkm>◂ Back</button>`);
+  bind(v=>{pick.push(v);if(pick.length<n)return draw();
+   if([...pick].sort().join()===[...need].sort().join())return forge(k,`🧩 Puzzle solved: ${need.join(" + ")}! `);
+   show(`<p>Not quite. <b>${k}</b> is made from <b>${need.join(" + ")}</b>. Nothing was spent.</p><button id=nx>Try again</button><br><button id=nb>◂ Back</button>`);$("#nx").onclick=()=>forgePuzzle(k);$("#nb").onclick=()=>forgePanel(k)});
+  $("#bkm").onclick=()=>forgePanel(k)};draw()}
 function shop(note=""){const sw=S.sw<3?`⚔️ ${SWN[S.sw+1]} – ${SWC[S.sw+1]}🪙<small>+5 damage in battle (now: ${SWN[S.sw]})</small>`:`⚔️ ${SWN[S.sw]}<small>Your blade is fully upgraded.</small>`;
  show(`<b>🛒 Village Shop</b> · 🪙 ${S.gold}<p>${note||"Stock up before exploring. Food heals outside battle; potions can also be used during your turn in combat."}</p><div class="section-label">Healing supplies</div><button class="c sh" data-v="p">🧪 Potion – 20🪙<small>Restores 30 HP during your battle turn · owned: ${S.pot}</small></button><button class="c sh" data-v="f">🍡 Trail snack – 10🪙<small>Restores 10 HP outside battle · owned: ${S.food}</small></button><button class="c sh" data-v="m">🍱 Hearty meal – 20🪙<small>Restores 20 HP outside battle · owned: ${S.meal}</small></button><div class="section-label">Adventure supplies</div><button class="c sh" data-v="h">💡 Hint scroll – 10🪙<small>Removes two wrong answers · owned: ${S.hint}</small></button><button class="c sh" data-v="s">${sw}</button><div class="section-label">Materials</div><button class="c sh" data-v="mo">${MN.ore} – 8🪙<small>Needed to forge and craft (you have ${S.inv.ore})</small></button><button class="c sh" data-v="mw">${MN.water} – 6🪙<small>You have ${S.inv.water}</small></button><button class="c sh" data-v="mt">${MN.wood} – 6🪙<small>You have ${S.inv.wood}</small></button><button id=bkm>◂ Back</button>`);
  bind(v=>{if(v[0]=="m"&&v!="m"){const m={mo:"ore",mw:"water",mt:"wood"}[v],c=v=="mo"?8:6;if(S.gold<c)return shop("Not enough gold yet.");S.gold-=c;S.inv[m]++;save();hud();return shop("Bought 1 "+MN[m]+".")}const prices={p:20,f:10,m:20,h:10,s:SWC[S.sw+1]},c=prices[v];
@@ -1334,17 +1361,20 @@ function shop(note=""){const sw=S.sw<3?`⚔️ ${SWN[S.sw+1]} – ${SWC[S.sw+1]}
   if(S.gold<c)return shop("Not enough gold yet.");
   S.gold-=c;if(v=="p")S.pot++;else if(v=="f")S.food++;else if(v=="m")S.meal++;else if(v=="h")S.hint++;else if(v=="s")S.sw++;save();hud();shop("Purchase complete!")});
  $("#bkm").onclick=()=>smith()}
-function forge(k){const m=MAT[reg(k)];if(S.inv[m]<1){smith("You need 1 "+MN[m]+" to forge. Buy it in the shop or earn it from monsters.");return}const need=K[k].p,pool=["七","八","衤","刀","另","刂","口","力","水","木","氵","也","永","毎","立","先","亻","一","寸","交"];let o=[...need];
- for(const x of shuf(pool)){if(o.length>=6)break;if(!o.includes(x))o.push(x)}o=shuf(o);let pick=[];
- const r=()=>{show(`<b>Forge ${k} (${K[k].m})</b><p>Tap the ${need.length} parts that make it:</p><div class=big>${pick.join(" + ")||"…"}</div>`+o.map(x=>`<button class="c k" data-v="${x}">${x}</button>`).join(""));bind(v=>{pick.push(v);
-  if(pick.length<need.length)return r();
-  if(need.every(x=>pick.includes(x))){S.kn[k].cr=1;S.inv[m]--;const g=gain(20,10);show(`<div class=big>${k}</div><p>🔨 The blacksmith forges <b>${k}</b> (${need.join(" + ")})! ${g}${S.eq?"":" You received the <b>Samurai Sword</b>!"}</p><button id=nx>Continue</button>`);S.eq=1;save();$("#nx").onclick=()=>smith()}
-  else{show(`<p>Not quite. <b>${k}</b> is made from <b>${need.join(" + ")}</b>.</p><button id=nx>Try again</button>`);$("#nx").onclick=()=>forge(k)}})};r()}
+function forge(k,pre=""){const d=S.kn[k];if(!d)return forgeList();
+ const why=forgeBlock(k);if(why)return forgePanel(k,why);
+ if(S.gold<FORGE_GOLD)return forgePanel(k,"Not enough gold.");
+ if(S.inv.ore<FORGE_ORE)return forgePanel(k,"You need "+FORGE_ORE+" "+MN.ore+". Buy one in the shop.");
+ const before=rar(k);S.gold-=FORGE_GOLD;S.inv.ore-=FORGE_ORE;d.fg=(d.fg||0)+1;d.cr=1;let sw="";if(!S.eq){S.eq=1;sw=" You received the <b>Samurai Sword</b>!"}save();hud();
+ const after=rar(k);
+ try{if(after>before&&window.kqToast)kqToast("🔨",k+" is now "+RAR[after],"Forged at the blacksmith")}catch(e){}
+ forgePanel(k,pre+(after>before?`🔨 ${k} is now ${RC[after]} <b>${RAR[after]}</b>!`:`🔨 Forged ${k}. +1 correct-answer equivalent.`)+sw)}
 function Q(k,ty){let t,a,d;const oth=KS.filter(x=>x!=k&&reg(x)===reg(k));
  if(ty==0){t=`What does ${k} mean?`;a=K[k].m;d=oth.map(x=>K[x].m)}
  else if(ty==1){t=`Which is the on’yomi of ${k}?`;a=K[k].on;d=oth.map(x=>K[x].on)}
  else{t=`Which part appears in ${k}?`;a=shuf(K[k].p)[0];d=["七","八","衤","刀","另","刂","口","力","水","木","䒑","月","氵","也","永","毎","立","先","亻","一","寸","交"].filter(x=>!K[k].p.includes(x))}
  d=shuf([...new Set(d)].filter(x=>x!=a)).slice(0,3);return{t,a,o:shuf([a,...d]),x:`${k} → ${a}`}}
+function kqPickK(list){const nf=list.filter(k=>st(k)<FAM),fm=list.filter(k=>st(k)>=FAM),pool=nf.length&&(!fm.length||Math.random()<.85)?nf:(fm.length?fm:nf);return pool[Math.floor(Math.random()*pool.length)]}
 function weak(kn){return kn.map(k=>{const d=S.kn[k],ru=S.turn-(d.last||0)>=15;return{k,w:(d.wk||0)*3+(ru?2:0)+(d.ok<3?1:0),m:(d.wk||0)>0?"⭐":"💤"}}).filter(o=>o.w>=2).sort((a,b)=>b.w-a.w).slice(0,2).reduce((r,o)=>(r[o.k]=o.m,r),{})}
 function grantRegionalOre(region,amount){let out=[];if(!S.ores||!S.ores[region])return out;for(let n=0;n<amount;n++){const roll=Math.random()*100,tier=roll<60?0:roll<85?1:roll<97?2:3;S.ores[region][tier]++;out.push(ORE_TIERS[tier])}return out}
 /* ===== Streak tiers + village boss sentence trial ===== */
@@ -1366,6 +1396,49 @@ const BOSS_S={
  i:{s:"[土|つち]の[坂|さか]を{登|のぼ}ると、[石|いし]と[岩|いわ]が{多|おお}い。[地|じ]{面|めん}に[砂|すな]も{見|み}えた。",en:"Climbing the dirt slope, there are many stones and rocks. Sand was also visible on the ground."},
  f:{s:"[火|ひ]の[炎|ほのお]で{魚|さかな}を[焼|や]いた。[灯|あかり]は[熱|あつ]く、[灰|はい]が{舞|ま}った。",en:"I grilled fish over the flames of the fire. The lamp was hot, and ashes drifted."},
  a:{s:"[空|そら]の[雲|くも]が[風|かぜ]で{流|なが}れ、[天|てん]{国|ごく}の[星|ほし]が[光|ひか]る。",en:"Clouds in the sky drift on the wind, and the stars of heaven shine."}};
+const UP_S={
+ k:[{s:"{私|わたし}は[初|はじ]めて[刀|かたな]を{見|み}た。",en:"I saw a sword for the first time."},
+    {s:"{紙|かみ}を[切|き]って、{半|はん}[分|ぶん]にした。[別|べつ]の{紙|かみ}も{同|おな}じだ。",en:"I cut the paper in half. The other paper is the same."},
+    {s:"[前|まえ]に{進|すす}んで、[刀|かたな]を{置|お}いた。",en:"I stepped forward and put the sword down."}],
+ w:[{s:"{夏|なつ}の[海|うみ]で[泳|およ]ぐ。[水|みず]は{冷|つめ}たかった。",en:"In summer I swim in the sea. The water was cold."},
+    {s:"{妹|いもうと}は[池|いけ]の{前|まえ}で[泣|な]いて、{顔|かお}を[洗|あら]った。",en:"My little sister cried in front of the pond and washed her face."}],
+ t:[{s:"[森|もり]の[木|き]の{下|した}で[休|やす]んだ。",en:"I rested under a tree in the forest."},
+    {s:"[村|むら]の[校|こう]{庭|てい}で[本|ほん]を{読|よ}んだ。",en:"I read a book in the village schoolyard."}],
+ i:[{s:"[坂|さか]の[土|つち]に[石|いし]がある。",en:"There are stones in the soil on the slope."},
+    {s:"[岩|いわ]の{上|うえ}で[砂|すな]を{見|み}て、[地|ち]{図|ず}を{書|か}いた。",en:"On top of the rock I looked at the sand and drew a map."}],
+ f:[{s:"[火|ひ]が[熱|あつ]いので、{肉|にく}を[焼|や]いた。",en:"Because the fire was hot, I grilled meat."},
+    {s:"[灯|あかり]は{消|き}えたが、[灰|はい]の{中|なか}に[炎|ほのお]が{残|のこ}った。",en:"The lamp went out, but a flame remained in the ashes."}],
+ a:[{s:"[空|そら]に[雲|くも]がある。[風|かぜ]が{強|つよ}い。",en:"There are clouds in the sky. The wind is strong."},
+    {s:"[天|てん]{気|き}が{良|よ}くて、[星|ほし]の[光|ひかり]が{見|み}えた。",en:"The weather was good, and I could see the light of the stars."}]};
+function kqSentenceRun(r,B,onEnd){
+ const toks=kqParse(B.s),blanks=toks.filter(t=>t.b),pool=regionKanji(r),res=[];let i=0,miss=0;
+ const sentence=()=>toks.map(t=>{
+  if(t.t)return t.t;
+  if(!t.b)return`<ruby>${t.k}<rt>${t.r}</rt></ruby>`;
+  const bi=blanks.indexOf(t);
+  if(bi<i||i>=blanks.length)return`<ruby class="kq-bs ${res[bi]?"ok":"bad"}">${t.k}<rt>${t.r}</rt></ruby>`;
+  return`<ruby class="kq-bs${bi===i?" cur":""}"><span>\uFF3F</span><rt>${t.r}</rt></ruby>`}).join("");
+ const ask=(msg="")=>{
+  if(i>=blanks.length)return onEnd(miss===0,miss,blanks.length,sentence(),B.en);
+  const b=blanks[i],opts=shuf([b.k,...shuf(pool.filter(x=>x!==b.k)).slice(0,3)]);
+  show(`<b>\u{1F4DC} Builder\u2019s Trial \u00B7 ${i+1}/${blanks.length}</b><div class="kq-bs-s">${sentence()}</div><p>${msg}Which kanji is read <b>${b.r}</b> here?</p>`+opts.map(o=>`<button class="c k" data-v="${o}">${o}<small>${K[o].m}</small></button>`).join(""));
+  KQ_ANS={a:b.k};bind(v=>{
+   const ok=v===b.k,d=S.kn[b.k];
+   if(d){d.last=++S.turn;if(ok){d.ok=(d.ok||0)+1;d.wk=Math.max(0,(d.wk||0)-1)}else{d.miss=(d.miss||0)+1;d.wk=(d.wk||0)+1}}
+   const up=kqStreak(b.k,ok);if(!ok)miss++;res[i]=ok;i++;save();
+   ask(ok?`\u2705 ${b.k} (${K[b.k].m}).${up?` \u{1F4C8} ${b.k} is now ${up}!`:""}<br>`:`\u274C It was ${b.k} (${K[b.k].m}).<br>`)})};
+ ask()}
+function kqUpgradeDo(r,b,pre=""){const cur=villageLevel(r,b);if(cur>=5)return civilization("This building is already at maximum level.");const next=cur+1,cost=villageCost(r,cur);if(S.gold<cost.gold)return civilization("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return civilization("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");S.gold-=cost.gold;S.ores[r][0]-=cost.ore;S.villages[r][b]=next;save();hud();civilization(pre+VILLAGE_BUILDINGS[r][b]+" upgraded to Level "+next+"!")}
+function kqUpgradeTrial(r,b){
+ const name=VILLAGE_BUILDINGS[r][b],cur=villageLevel(r,b),bank=[...(UP_S[r]||[]),...(BOSS_S[r]?[BOSS_S[r]]:[])];
+ if(!bank.length)return kqUpgradeDo(r,b);
+ const pick=()=>{let B;do{B=bank[Math.floor(Math.random()*bank.length)]}while(bank.length>1&&B===kqUpgradeTrial.last);kqUpgradeTrial.last=B;return B};
+ const run=()=>kqSentenceRun(r,pick(),(perfect,miss,n,sent,en)=>{
+  if(perfect){show(`<div class="big">\u{1F31F}</div><b>Trial passed!</b><div class="kq-bs-s">${sent}</div><p><small>${en}</small></p><p>${n}/${n} correct. The builders get to work.</p><button id="upOk">Start construction</button>`);$("#upOk").onclick=()=>kqUpgradeDo(r,b,"\u{1F9E9} Trial passed! ");return}
+  show(`<div class="big">\u{1F4D6}</div><b>Not quite</b><div class="kq-bs-s">${sent}</div><p><small>${en}</small></p><p>${n-miss}/${n} correct. The builders need every blank right. Nothing was spent.</p><button id="upAgain">Try another sentence</button><br><button id="upBack">\u25C2 Back</button>`);
+  $("#upAgain").onclick=run;$("#upBack").onclick=()=>civilization()});
+ show(`<div class="big">\u{1F3D7}</div><b>Builder\u2019s Trial: ${name}</b><p>Before work on ${name} (Level ${cur} \u2192 ${cur+1}) begins, the builders test your reading. Fill each blank with the kanji that matches the reading above it. Get every blank right to start construction. Nothing is spent unless you pass, and you can try again.</p><button id="upGo">Begin the trial</button><br><button id="upBack0">\u25C2 Back</button>`);
+ $("#upGo").onclick=run;$("#upBack0").onclick=()=>civilization()}
 function kqParse(str){const out=[],re=/\[(.)\|([^\]]+)\]|\{([^|}]+)\|([^}]+)\}|([^\[{]+)/g;let m;while((m=re.exec(str))){if(m[1])out.push({b:1,k:m[1],r:m[2]});else if(m[3])out.push({k:m[3],r:m[4]});else out.push({t:m[5]})}return out}
 (function(){const c=document.createElement("style");c.textContent=
  "#m .kq-bs-s{font-size:22px;line-height:2.6;margin:8px 0;text-align:center}#m .kq-bs-s rt{font-size:.45em;color:#d8c9a0}"+
@@ -1434,7 +1507,7 @@ function fight(e,opt){
  const monsterTurn=(note)=>{const dmg=Math.max(1,attack-armorDefense());S.hp=Math.max(0,S.hp-dmg);save();hud();if(S.hp<=0)return endDefeat();return ask(note+` The monster counterattacks for ${dmg} damage.`)};
  const ask=(note="")=>{
   if(hp<=0)return win();if(turn>=limit)return escape();
-  const k=shuf(kn)[0];
+  const k=kqPickK(kn);
   const vocabPool=Object.values(S.civVocab||{}).filter(w=>w&&w.jp&&w.en);
   let q;
   // Occasionally a monster tests a word the player has actually discovered.
@@ -1595,7 +1668,7 @@ const ctl=$("#kqCtl");if(ctl){const g=document.createElement("button");g.id="kqG
 /* ---------- toasts, sparkles, mini status bar ---------- */
 function toast(ic,t,s){let w=$("#kqToast");if(!w){w=document.createElement("div");w.id="kqToast";document.body.append(w)}const d=document.createElement("div");d.innerHTML=`<span>${ic}</span><b>${t}</b><small>${s||""}</small>`;w.append(d);setTimeout(()=>d.remove(),3300)}
 function spark(){if(RM())return;const w=document.createElement("div");w.className="kq-sparks";for(let i=0;i<22;i++){const s=document.createElement("i");s.style.cssText=`--a:${i*16.4}deg;--d:${60+Math.random()*90}px;--c:${["#ffd36a","#fff","#9fe8ff","#ffb0c8"][i%4]}`;w.append(s)}document.body.append(w);setTimeout(()=>w.remove(),1400)}
-function mini(){let m=$("#kqMini");if(!m){m=document.createElement("div");m.id="kqMini";$("#game").append(m)}m.innerHTML=`<span class="mh"><i style="width:${Math.max(0,S.hp/maxHP()*100)}%"></i><b>❤ ${S.hp}/${maxHP()}</b></span><span>⭐ Lv ${S.lv}</span><span>🪙 ${S.gold}</span>`}
+function mini(){let m=$("#kqMini");if(!m){m=document.createElement("div");m.id="kqMini";$("#game").append(m)}m.innerHTML=`<span class="mh"><i style="width:${Math.max(0,S.hp/maxHP()*100)}%"></i><b>❤ ${S.hp}/${maxHP()}</b></span><span>⭐ Lv ${S.lv}</span><span>🪙 ${S.gold}</span><span>🪨 ${(S.inv&&S.inv.ore)||0}</span>`}
 window.kqToast=toast;const _hud=hud;window.hud=function(){_hud();try{mini()}catch(e){}};
 const _gain=gain;window.gain=function(x,g){const lv=S.lv,r=_gain(x,g);if(S.lv>lv){spark();tone([523,659,784,1047]);toast("⭐","Level up!","You reached Lv "+S.lv)}return r};
 const _dd=discoverDone;window.discoverDone=function(d){_dd(d);spark();tone([523,784,1047]);toast(d.n.split(" ")[0],"Discovery unlocked",d.n.slice(d.n.indexOf(" ")+1))};
@@ -1614,7 +1687,7 @@ function enhance(m){
  const big=m.querySelector(".big");if(big&&!t){const k=big.textContent.trim();if(K[k]&&S.kn[k]){const c=document.createElement("div");c.style.textAlign="center";c.innerHTML=`<span class="kq-chip" data-stage="${st(k)}" data-tier="${kqTier(k)}">${kqTier(k)}</span>`;big.before(c)}}}
 const _show=show;window.show=function(h){window.KQ_ANS=null;_show(h);try{enhance($("#m"))}catch(e){console.warn("skin",e)}};
 /* ---------- quiz feedback: correct glows, wrong shakes, answer highlighted ---------- */
-function fx(b,A,go){const ans=String(A.a).trim(),ok=b.textContent.trim()===ans;$$("#m .c").forEach(x=>{x.disabled=true;if(x.textContent.trim()===ans)x.classList.add("kq-right")});if(!ok)b.classList.add("kq-wrong");
+function fx(b,A,go){const ans=String(A.a).trim(),val=x=>String(x.dataset.v!=null?x.dataset.v:x.textContent).trim(),ok=val(b)===ans;$$("#m .c").forEach(x=>{x.disabled=true;if(val(x)===ans)x.classList.add("kq-right")});if(!ok)b.classList.add("kq-wrong");
  const s=$("#m .kq-stage");if(s){s.classList.add(ok?"kq-hit":"kq-miss");if(ok&&A.lethal)s.classList.add("kq-die");if(ok&&A.dmg&&!RM()){const d=document.createElement("span");d.className="kq-dmg";d.textContent="-"+A.dmg;s.querySelector(".kq-mo").append(d)}}
  tone(ok?[660,880]:[240,180]);setTimeout(go,RM()?250:(ok&&A.lethal?1050:800))}
 const _bind=bind;window.bind=function(f){_bind(f);$$("#m .c").forEach(b=>{const o=b.onclick;b.onclick=()=>{const A=window.KQ_ANS;if(!A||String(b.dataset.v).startsWith("!")||b.disabled)return o();window.KQ_ANS=null;fx(b,A,o)}})};
