@@ -690,7 +690,8 @@ const E=[];
    For Firebase later, replace their bodies with Firestore reads/writes of S (keep the same shape). */
 const RAR=["Normal","Rare","Legendary","Mythical"],RC=["⚪","🔵","🟡","🟣"],WB=[2,5,9,15],AB=[5,10,20,35];
 function load(){try{return JSON.parse(localStorage.getItem("kq1"))}catch(e){return null}}
-function save(){if(window.KQ_RESETTING)return;try{localStorage.setItem("kq1",JSON.stringify(S))}catch(e){}}
+function kqCap20(){try{for(const k in S.kn){const d=S.kn[k];if(!d)continue;if(d.ok>20)d.ok=20;if(d.streak>20)d.streak=20;if(d.fg&&(d.ok||0)+d.fg>20)d.fg=Math.max(0,20-(d.ok||0));if(d.streak>=20||d.myth||(d.ok||0)+(d.fg||0)>=20){d.myth=1;d.leg=1;d.streak=20;d.ok=20;d.fg=0;d.wk=0;if(d.stage!==undefined&&d.stage<4)d.stage=4}}}catch(e){}}
+function save(){if(window.KQ_RESETTING)return;kqCap20();try{localStorage.setItem("kq1",JSON.stringify(S))}catch(e){}}
 let S=load()||{lv:1,xp:0,gold:0,kn:{},px:15,py:17,dead:[],talked:0,won:0,r:"k"};S.r=S.r||"k";S.turn=S.turn||0;S.inv=S.inv||{ore:6,water:0,wood:0};S.inv.ore??=6;S.inv.water??=0;S.inv.wood??=0;S.ores=S.ores||{k:[S.inv.ore||0,0,0,0],w:[0,0,0,0],t:[0,0,0,0],i:[0,0,0,0],f:[0,0,0,0],a:[0,0,0,0]};["k","w","t","i","f","a"].forEach(r=>{S.ores[r]=S.ores[r]||[0,0,0,0];while(S.ores[r].length<4)S.ores[r].push(0)});S.tool=S.tool||{};S.cut=S.cut||[];S.gear=S.gear||[];S.ew=S.ew??-1;S.ea=S.ea??-1;S.pot=S.pot||0;S.food=S.food||0;S.meal=S.meal||0;S.hint=S.hint||0;S.sw=S.sw||0;S.civ=S.civ||{water:false,fire:false,earth:false};S.civ.water=!!S.civ.water;S.civ.fire=!!S.civ.fire;S.civ.earth=!!S.civ.earth;["shelter","pottery","farming","metal"].forEach(k=>S.civ[k]=!!S.civ[k]);S.civFinds=S.civFinds||{};S.civVocab=S.civVocab||{};Object.values(S.civVocab).forEach(w=>{w.mastery??=0;w.correctRounds??=0;w.missRounds??=0;w.reviewStreak??=0;w.region=w.region||"k";w.rewardFlags=w.rewardFlags||{}});
 S.vocabMaterials=S.vocabMaterials||{memoryShards:0};S.vocabMaterials.memoryShards??=0;
 S.vocabTitles=S.vocabTitles||[];S.vocabRegionAwards=S.vocabRegionAwards||{};
@@ -1194,19 +1195,31 @@ function gm(page="main",note=""){
  if(page=="main")h+=B("d","🏘 Discoveries & buildings","Unlock or lock Water, Fire, Earth and more")+B("r","🎒 Resources","Wood, water, ore, gold, items")+B("p","⭐ Progression","Master kanji, complete regions, resets")+B("t","🌀 Teleport","Jump to any region")+B("x","🔄 Reset ALL progress","Delete the save and start the game from the beginning")+B("s",(S.gmSkip?"✅ ":"⬜ ")+"Skip button in fights & gathering",S.gmSkip?"ON – tap to turn off":"OFF – tap to turn on")+B("c","🧹 Reset game cache","Clear cached files for this game only. Your save is kept");
  else if(page=="d")h+=DISC.map(d=>B("d:"+d.k,(S.civ[d.k]?"✅ ":"⬜ ")+d.n,S.civ[d.k]?"Tap to lock":"Tap to unlock")).join("")+B("d:all","✅ Unlock all")+B("d:none","⬜ Lock all");
  else if(page=="r")h+=B("r:wood","+10 🪵 Wood")+B("r:water","+10 💧 Water")+B("r:ore","+10 ⚪ Common ore (all regions)")+B("r:allore","+5 of every ore tier (all regions)")+B("r:gold","+500 🪙 Gold")+B("r:items","+5 🧪 Potions and +5 💡 Hints")+B("r:tools","🪓⛏️🪣🌀 Give all gathering tools");
- else if(page=="p")h+=B("p:lv","+5 Levels")+B("p:kanji","Master all kanji","Sets every kanji to Mastered and forged")+B("p:regions","Complete all regions","Talk, kills and bosses done; portals open")+B("p:civ","Reset civilization only","Locks all discoveries, keeps everything else")+B("p:reset","⚠ Reset ALL progress");
+ else if(page=="p")h+=B("p:lv","+5 Levels")+B("p:pick","🎯 Single kanji…","Add +5 correct answers, make it Mythical, or reset it")+B("p:kanji","Master all kanji","Sets every kanji to Mastered and forged")+B("p:regions","Complete all regions","Talk, kills and bosses done; portals open")+B("p:civ","Reset civilization only","Locks all discoveries, keeps everything else")+B("p:reset","⚠ Reset ALL progress");
  else if(page=="reset")h+=`<p>This deletes your whole save and reloads the game.</p>`+B("p:reset2","Yes, delete everything");
  else if(page=="c")h+=`<p>Clears this game's cached files and reloads it. <b>Your save and progress are kept.</b></p>`+B("c:go","Yes, clear cache & reload");
  else if(page=="t")h+=Object.keys(RG).map(r=>B("t:"+r,RG[r].n,S.r==r?"You are here":"")).join("");
+ if(page=="k")h+=`<p><small>Pick a kanji. Correct answers are shown as n/20 (20 = Mythical, maxed).</small></p>`+B("k:all5","+5 correct answers to ALL kanji")+B("k:allmax","Make ALL kanji Mythical (20)")+KS.map(k=>{const d=S.kn[k];return `<button class="c k" data-v="k:${k}">${k}<small>${K[k].m} · ${d?Math.min(20,(d.ok||0)+(d.fg||0)):"—"}/20</small></button>`}).join("");
+ else if(page.startsWith("kk")){const k=page.slice(2),d=S.kn[k];h+=`<div class="big">${k}</div><p><b>${K[k].m}</b> · ${d?kqTier(k)+" · "+Math.min(20,(d.ok||0)+(d.fg||0))+"/20 correct":"not discovered yet"}</p>`+B("kk:5","+5 correct answers","Raises the correct count and the streak by 5")+B("kk:max","⭐ Make Mythical (20/20)","Maxed: cannot be forged or gain more points")+B("kk:reset","↺ Reset this kanji","Back to Discovered, 0 correct")}
  h+=page=="main"?"<br><button id=gmx>Close</button>":"<br><button id=gmb>◂ Back</button>";
  show(h);
  bind(v=>{const [a,b]=v.split(":");
   if(page=="main"&&a=="x")return gm("reset");
   if(page=="main"&&a=="s"){S.gmSkip=!S.gmSkip;save();return gm("main",S.gmSkip?"Skip button ON.":"Skip button OFF.")}
   if(page=="main")return gm(a);
+  if(page=="k"){const give=k=>{const d=S.kn[k]=S.kn[k]||{ok:0,stage:1,pp:0};for(let i=0;i<5;i++){d.ok=(d.ok||0)+1;kqStreak(k,true)}},mx=k=>{const d=S.kn[k]=S.kn[k]||{ok:0,stage:1,pp:0};d.ok=20;d.streak=20;d.myth=1;d.leg=1;d.stage=4;d.wk=0};
+   if(b=="all5"){KS.forEach(give);gmApply();return gm("k","+5 given to all kanji.")}
+   if(b=="allmax"){KS.forEach(mx);gmApply();return gm("k","All kanji are Mythical.")}
+   return gm("kk"+b)}
+  if(page.startsWith("kk")){const k=page.slice(2),d=S.kn[k]=S.kn[k]||{ok:0,stage:1,pp:0};
+   if(b=="5"){for(let i=0;i<5;i++){d.ok=(d.ok||0)+1;kqStreak(k,true)}}
+   else if(b=="max"){d.ok=20;d.streak=20;d.myth=1;d.leg=1;d.stage=4;d.wk=0}
+   else if(b=="reset"){S.kn[k]={ok:0,stage:1,pp:0}}
+   save();gmApply();return gm(page,b=="max"?"Now Mythical (20/20).":b=="5"?"+5 correct answers.":"Reset.")}
   if(page=="d"){if(b=="all")DISC.forEach(d=>S.civ[d.k]=true);else if(b=="none")DISC.forEach(d=>S.civ[d.k]=false);else S.civ[b]=!S.civ[b];gmApply();return gm("d","Updated.")}
   if(page=="r"){if(b=="wood")S.inv.wood+=10;else if(b=="water")S.inv.water+=10;else if(b=="ore")["k","w","t","i","f","a"].forEach(r=>S.ores[r][0]+=10);else if(b=="allore")["k","w","t","i","f","a"].forEach(r=>[0,1,2,3].forEach(t=>S.ores[r][t]+=5));else if(b=="gold")S.gold+=500;else if(b=="items"){S.pot+=5;S.food+=5;S.meal+=5;S.hint+=5}else if(b=="tools"){S.tool.axe=1;S.tool.bucket=1;S.tool.pickaxe=1;S.tool.compressor=1}gmApply();return gm("r","Added.")}
   if(page=="p"||page=="reset"){
+   if(b=="pick")return gm("k");
    if(b=="lv"){S.lv+=5}
    else if(b=="kanji")gmMasterKanji();
    else if(b=="regions"){gmMasterKanji();S.eq=1;Object.keys(RG).forEach(r=>{const g=RG[r];S[g.fl]=1;S[g.win]=1;S.kills[r]=3;g.E.concat(g.bossE?[g.bossE]:[]).filter(e=>e.t=="m"||e.t=="o").forEach(e=>{if(!S.dead.includes(e.id))S.dead.push(e.id)})})}
@@ -1229,7 +1242,7 @@ function gm(page="main",note=""){
    })();
    setTimeout(()=>show("<b>Cache cleared</b><p>Close and reopen the game to finish.</p>"),4000);return}
   if(page=="t"){S.r=b;S.px=RG[b].sx;S.py=RG[b].sy;save();loadRegion();return gm("t","Teleported.")}});
- const x=$("#gmx");if(x)x.onclick=hide;const bk=$("#gmb");if(bk)bk.onclick=()=>gm("main")}
+ const x=$("#gmx");if(x)x.onclick=hide;const bk=$("#gmb");if(bk)bk.onclick=()=>gm(page.startsWith("kk")?"k":page=="k"?"p":"main")}
 
 // Phase 10: conservative JLPT vocabulary bands. Only confidently common study words
 // are assigned a level; all remaining discoveries stay in the Unclassified collection.
@@ -1329,6 +1342,7 @@ function smith(note=""){if(!S[RG[S.r].fl]){say("Blacksmith",["Speak with the eld
 const FORGE_GOLD=2,FORGE_ORE=1,FORGE_AT=[3,10,20];
 const forgeScore=k=>{const d=S.kn[k]||{};return (d.ok||0)+(d.fg||0)};
 function forgeBlock(k){const d=S.kn[k];
+ if(d&&(d.myth||(d.ok||0)+(d.fg||0)>=20))return k+" is maxed at 20/20 (Mythical). Nothing left to forge.";
  if(!d||st(k)<FAM)return k+" must reach Familiar first (3 correct answers in a row).";
  const r=rar(k),cap=GEAR_STAGE_CAP[st(k)]??0;
  if(r>=3)return "Already Mythical — nothing left to forge.";
@@ -1381,8 +1395,8 @@ function grantRegionalOre(region,amount){let out=[];if(!S.ores||!S.ores[region])
 function kqTier(k){const d=S.kn[k];if(!d)return SN[0];if(d.myth&&st(k)>=4)return"Mythical";if(d.leg&&st(k)>=4)return"Legendary";return SN[st(k)]||SN[0]}
 /* Consecutive correct answers (battle, gathering, formal review, boss trial): 3 = Familiar, 10 = Legendary, 20 = Mythical. A wrong answer resets the streak. */
 function kqStreak(k,ok){const d=S.kn&&S.kn[k];if(!d)return null;
- if(!ok){if(d.streak){d.streak=0;save()}return null}
- d.streak=(d.streak||0)+1;const m=ensureMastery(k);let up=null;
+ if(!ok){if(d.streak&&!d.myth){d.streak=0;save()}return null}
+ d.streak=Math.min(20,(d.streak||0)+1);const m=ensureMastery(k);let up=null;
  if(d.streak>=3&&st(k)<3){d.stage=3;d.pp=Math.max(Number.isFinite(d.pp)?d.pp:0,PP_FAM);m.masterCorrect=0;m.masterRounds=[];m.masterTypes=[];up="Familiar"}
  if(d.streak>=10&&!d.leg){d.leg=1;if(st(k)<4)d.stage=4;up="Legendary"}
  if(d.streak>=20&&!d.myth){d.myth=1;d.leg=1;if(st(k)<4)d.stage=4;up="Mythical"}
@@ -1687,7 +1701,7 @@ function enhance(m){
  const big=m.querySelector(".big");if(big&&!t){const k=big.textContent.trim();if(K[k]&&S.kn[k]){const c=document.createElement("div");c.style.textAlign="center";c.innerHTML=`<span class="kq-chip" data-stage="${st(k)}" data-tier="${kqTier(k)}">${kqTier(k)}</span>`;big.before(c)}}}
 const _show=show;window.show=function(h){window.KQ_ANS=null;_show(h);try{enhance($("#m"))}catch(e){console.warn("skin",e)}};
 /* ---------- quiz feedback: correct glows, wrong shakes, answer highlighted ---------- */
-function fx(b,A,go){const ans=String(A.a).trim(),val=x=>String(x.dataset.v!=null?x.dataset.v:x.textContent).trim(),ok=val(b)===ans;$$("#m .c").forEach(x=>{x.disabled=true;if(val(x)===ans)x.classList.add("kq-right")});if(!ok)b.classList.add("kq-wrong");
+function fx(b,A,go){const ans=String(A.a).trim(),val=x=>String(x.dataset.v!=null?x.dataset.v:x.textContent).trim(),isA=x=>val(x)===ans||x.textContent.trim()===ans,ok=isA(b);$$("#m .c").forEach(x=>{x.disabled=true;if(isA(x))x.classList.add("kq-right")});if(!ok)b.classList.add("kq-wrong");
  const s=$("#m .kq-stage");if(s){s.classList.add(ok?"kq-hit":"kq-miss");if(ok&&A.lethal)s.classList.add("kq-die");if(ok&&A.dmg&&!RM()){const d=document.createElement("span");d.className="kq-dmg";d.textContent="-"+A.dmg;s.querySelector(".kq-mo").append(d)}}
  tone(ok?[660,880]:[240,180]);setTimeout(go,RM()?250:(ok&&A.lethal?1050:800))}
 const _bind=bind;window.bind=function(f){_bind(f);$$("#m .c").forEach(b=>{const o=b.onclick;b.onclick=()=>{const A=window.KQ_ANS;if(!A||String(b.dataset.v).startsWith("!")||b.disabled)return o();window.KQ_ANS=null;fx(b,A,o)}})};
@@ -2515,6 +2529,168 @@ window.kqOpenProgress=open;
  let seen=0;try{seen=localStorage.getItem("kqTut1")}catch(e){}
  if(!seen){let n=0;const t=setInterval(()=>{n++;if(n>100)clearInterval(t);if(window.P&&P.ready&&document.getElementById("m").hidden){clearInterval(t);open()}},200)}
 }catch(e){console.warn("tutorial",e)}})();
-</script></body></html>
+</script>
+<script>
+/* ===== RAID DUNGEON: endless RPG dungeon with a 6-attribute system (6 Katana kanji) ===== */
+(function(){try{
+const RA=[
+ {id:"STR",k:"刀",n:"Strength",d:"Physical attack (ATK)"},
+ {id:"AGI",k:"別",n:"Agility",d:"Attack speed and dodge"},
+ {id:"VIT",k:"前",n:"Vitality",d:"HP and defense"},
+ {id:"INT",k:"分",n:"Intellect",d:"Magic attack and MP"},
+ {id:"DEX",k:"切",n:"Dexterity",d:"Accuracy"},
+ {id:"LUK",k:"初",n:"Luck",d:"Critical chance"}];
+const ARCH=[
+ {id:"slime",n:"Slime",e:"🟢",m:{hp:1,atk:.9,def:.6,acc:.95,dodge:.5,crit:1},tip:"Balanced and weak."},
+ {id:"beetle",n:"Iron Beetle",e:"🪲",m:{hp:1.1,atk:.9,def:2.1,acc:.95,dodge:.4,crit:1},tip:"Heavy armour. Spells ignore half of its DEF."},
+ {id:"wisp",n:"Wisp",e:"👻",m:{hp:.8,atk:1,def:.4,acc:1.05,dodge:3,crit:1},tip:"Very evasive. Raise DEX (accuracy), or use spells."},
+ {id:"rogue",n:"Goblin Rogue",e:"👺",m:{hp:.9,atk:1.25,def:.7,acc:1.1,dodge:1.2,crit:4},tip:"Strikes hard and crits. Raise VIT (defense)."},
+ {id:"golem",n:"Stone Golem",e:"🗿",m:{hp:2.2,atk:1.05,def:1.3,acc:.9,dodge:0,crit:1},tip:"Enormous HP. Raise STR or INT."},
+ {id:"bat",n:"Hex Bat",e:"🦇",m:{hp:.7,atk:1.1,def:.5,acc:1.2,dodge:1.8,crit:2},tip:"Fast and accurate. Raise AGI (dodge)."}];
+const BOSSES=["Raid Warden","Bone Colossus","Void Hydra","Ember Tyrant","Frost Sovereign","Shadow Archon"];
+const GEAR=[
+ {slot:"weapon",names:["Bronze Sword","Iron Sword","Steel Sword","Mithril Sword","Dragon Sword"],b:{atk:5}},
+ {slot:"armor",names:["Leather Armor","Chain Armor","Plate Armor","Mithril Armor","Dragon Armor"],b:{def:3}},
+ {slot:"ring",names:["Ring","Silver Ring","Gold Ring","Mithril Ring","Dragon Ring"],b:{STR:2}},
+ {slot:"boots",names:["Boots","Swift Boots","Hunter Boots","Mithril Boots","Dragon Boots"],b:{AGI:2}}];
+/* sprites reused from the main game's portrait sheet (PORT_DATA), recoloured with CSS filters */
+const HERO_SPR={i:0,f:"hue-rotate(140deg) saturate(1.15)",n:"Dungeon Knight"};
+const BSPR=[{i:12,f:"hue-rotate(190deg) saturate(1.1)"},{i:15,f:"sepia(.7) saturate(.8) brightness(1.25)"},{i:13,f:"hue-rotate(80deg) saturate(1.2)"},{i:14,f:"hue-rotate(250deg) saturate(1.3)"},{i:16,f:"hue-rotate(185deg) saturate(1.1)"},{i:17,f:"hue-rotate(260deg) brightness(.55) contrast(1.25)"}];
+const NSPR={slime:{i:8,f:"hue-rotate(70deg) saturate(1.2)",h:62},beetle:{i:11,f:"hue-rotate(160deg) brightness(.85) saturate(.9)",h:70},wisp:{i:9,f:"hue-rotate(290deg) opacity(.85)",h:68},rogue:{i:10,f:"hue-rotate(110deg) saturate(1.2)",h:56},golem:{i:11,f:"sepia(.8) saturate(1.4) hue-rotate(-15deg)",h:92},bat:{i:17,f:"hue-rotate(235deg) brightness(.6) contrast(1.2)",h:76}};
+const sprOf=m=>m?(m.boss?BSPR[((Math.round(m.f/10)-1)%BSPR.length+BSPR.length)%BSPR.length]:NSPR[m.id]||null):null;
+const sprHtml=(s,h,cls)=>{try{if(s&&PORT_DATA[s.i])return `<img class="rd-img ${cls||""}" alt="" src="${PORT_DATA[s.i]}" style="height:${h}px;filter:${s.f}">`}catch(e){}return null};
+const SLOT_ICON={weapon:"⚔",armor:"🛡",ring:"💍",boots:"👢"};
 
-</body></html>
+/* ---- stat system: base attributes + equipment + modifiers -> final stats (always recalculated) ---- */
+function derive(a,flat,mul){flat=flat||{};mul=mul||{};
+ const d={hp:100+a.VIT*20+(flat.hp||0),mp:50+a.INT*10+(flat.mp||0),atk:10+a.STR*2+(flat.atk||0),matk:10+a.INT*2+(flat.matk||0),
+  def:a.VIT*2+(flat.def||0),acc:90+a.DEX*2+(flat.acc||0),dodge:a.AGI*2+(flat.dodge||0),
+  spd:Math.min(200,100+a.AGI*2+(flat.spd||0)),crit:Math.min(50,5+a.LUK*.5+(flat.crit||0))};
+ if(mul.def)d.def=Math.round(d.def*mul.def);return d}
+const hitChance=(acc,dodge)=>Math.max(20,Math.min(100,acc-dodge));
+function physDamage(atk,def,crit){let dmg=Math.max(1,Math.round(atk-def)),c=false;if(Math.random()*100<crit){dmg=Math.floor(dmg*1.5);c=true}return{dmg,crit:c}}
+function magicDamage(matk,def,crit){let dmg=Math.max(1,Math.round(matk-def/2)),c=false;if(Math.random()*100<crit){dmg=Math.floor(dmg*1.5);c=true}return{dmg,crit:c}}
+function monster(f){
+ const boss=f%10===0,A=boss?{id:"boss",n:BOSSES[(f/10-1)%BOSSES.length],e:"👹",m:{hp:2.2,atk:1.18,def:1.15,acc:1.1,dodge:.8,crit:2},tip:"A raid boss. Every attribute matters."}:ARCH[(f*7+Math.floor(f/3))%ARCH.length];
+ const b={hp:60+f*32+f*f*.55,atk:10+f*2.7+f*f*.085,def:1+f*1.45+f*f*.02,acc:84+f*1.1,dodge:2+f*.8,crit:5},m=A.m,hp=Math.round(b.hp*m.hp);
+ return{f,boss,id:A.id,n:A.n,e:A.e,tip:A.tip,hp,max:hp,atk:Math.round(b.atk*m.atk),def:Math.round(b.def*m.def),acc:Math.round(b.acc*m.acc),dodge:Math.round(b.dodge*m.dodge),crit:Math.min(40,b.crit*m.crit)}}
+
+/* ---- saved state ---- */
+function raid(){const R=S.raid=S.raid||{};R.attr=R.attr||{};RA.forEach(a=>{if(typeof R.attr[a.k]!=="number")R.attr[a.k]=5});
+ R.pts=R.pts||0;R.kg=R.kg||0;R.mg=R.mg||1;R.best=R.best||0;R.runs=R.runs||0;R.correct=R.correct||0;
+ R.eq=R.eq||{};["weapon","armor","ring","boots"].forEach(s=>{if(!(s in R.eq))R.eq[s]=null});return R}
+function syncPts(){const R=raid(),n=Object.keys(S.kn||{}).length;let ch=0;if(n>R.kg){R.pts+=n-R.kg;R.kg=n;ch=1}const L=S.lv||1;if(L>R.mg){R.pts+=3*(L-R.mg);R.mg=L;ch=1}if(ch)save();return R}
+function stats(mods){const R=raid(),a={},flat={};RA.forEach(x=>a[x.id]=R.attr[x.k]);
+ Object.keys(R.eq).forEach(s=>{const it=R.eq[s];if(!it)return;for(const k in it.b){if(k in a)a[k]+=it.b[k];else flat[k]=(flat[k]||0)+it.b[k]}});
+ const d=derive(a,flat,mods||{});d.a=a;return d}
+const bonusText=b=>Object.keys(b).map(k=>"+"+b[k]+" "+k.toUpperCase()).join(" ");
+const bar=(v,m,c)=>`<div class="rd-bar"><i style="width:${Math.max(0,Math.min(100,v/m*100))}%;background:${c}"></i><span>${Math.max(0,Math.ceil(v))}/${m}</span></div>`;
+const clampRun=()=>{const R=raid(),run=R.run;if(!run)return;const ps=stats();run.hp=Math.min(run.hp,ps.hp);run.mp=Math.min(run.mp,ps.mp)};
+
+/* ---- screens ---- */
+function hub(note){const R=syncPts();
+ show(`<div class="big">🏰</div><b>Raid Dungeon · Endless</b>${note?`<p>${note}</p>`:""}<p>Fight your way down floor after floor. Build your hero with six attributes: STR, AGI, VIT, INT, DEX and LUK. Every kanji you learn in the main game gives +1 attribute point, and every level-up gives +3.</p><p><small>Level ${S.lv} · Deepest floor ${R.best||0} · Points to spend ${R.pts}</small></p><button class="c sh" data-v="go">⚔ ${R.run?"Continue raid (Floor "+R.run.floor+")":"Enter the raid"}</button><button class="c sh" data-v="sheet">📊 Character and attributes</button><button class="c" data-v="how">❓ How it works</button><br><button id="rdX">Close</button>`);
+ bind(v=>{if(v==="go"){if(!R.run)return start();const m=R.run.mon;return m&&m.hp<m.max?fight("You return to the fight."):camp()}
+  if(v==="sheet")return sheet();if(v==="how")return how()});
+ $("#rdX").onclick=hide}
+function how(){
+ show(`<b>❓ How the raid works</b><p><b>Attributes:</b> STR (ATK) · AGI (speed, dodge) · VIT (HP, DEF) · INT (MATK, MP) · DEX (accuracy) · LUK (crit). All start at 5.</p><p><b>Points:</b> every kanji you learn anywhere in the game = +1 point. Each level-up = +3 points. Raid victories give XP to your main character. Spend them freely, no classes.</p><p><b>Combat:</b> hit chance = ACC − DODGE (20–100%). Physical damage = ATK − DEF (min 1), crits ×1.5. Spells cost 10 MP (3s cooldown), never miss, and ignore half of DEF. Battles are real time: you and the monster attack automatically, and SPD makes you attack faster. Cast spells and drink potions when you need them (they have cooldowns). Guard raises DEF ×1.6 but slows your attacks.</p><p><b>Monsters:</b> each type has a weakness. Check the scouting report at camp, then spend your points to counter it. Every 10th floor is a boss that drops gear. Gold and Iron Ore from the raid go to your main game.</p><button id="rdBk">◂ Back</button>`);
+ $("#rdBk").onclick=()=>raid().run?camp():hub()}
+let STEP=1;
+const PRESETS={bal:["⚖ Balanced",{STR:1,AGI:1,VIT:1,INT:1,DEX:1,LUK:1}],war:["🗡 Warrior",{STR:4,VIT:3,DEX:1.5,LUK:.5}],mage:["🔮 Mage",{INT:4,VIT:3,DEX:1,LUK:1}],rog:["🥷 Rogue",{STR:3,AGI:3,LUK:2,DEX:2}],tank:["🛡 Tank",{VIT:5,STR:2,AGI:1,DEX:1}]};
+function autoSpend(w){const R=raid(),n=R.pts;if(n<=0)return 0;const tot=Object.values(w).reduce((a,b)=>a+b,0),give={};let used=0;
+ Object.keys(w).forEach(k=>{give[k]=Math.floor(n*w[k]/tot);used+=give[k]});
+ const ks=Object.keys(w).sort((a,b)=>w[b]-w[a]);for(let i=0;used<n;i++,used++)give[ks[i%ks.length]]++;
+ RA.forEach(x=>{if(give[x.id])R.attr[x.k]+=give[x.id]});R.pts=0;save();return n}
+function sheet(note){const R=syncPts(),ps=stats();
+ const rows=RA.map(x=>{const base=R.attr[x.k],tot=ps.a[x.id];return `<div class="rd-row"><button class="c rd-plus" data-v="a:${x.id}" ${R.pts>0?"":"disabled"} aria-label="Add points to ${x.id}">+</button><div class="rd-val"><b>${x.id} ${tot}</b>${tot!==base?` <small>(${base} + ${tot-base} gear)</small>`:""}<small>${x.n}: ${x.d}</small></div></div>`}).join("");
+ const gear=Object.keys(R.eq).map(s=>{const it=R.eq[s];return `<small>${SLOT_ICON[s]} ${s}: ${it?it.n+" ("+bonusText(it.b)+")":"none"}</small>`}).join("");
+ show(`<b>📊 Character · Lv ${S.lv}</b>${note?`<p>${note}</p>`:""}<p>Unspent points: <b>${R.pts}</b> · XP ${S.xp}/${S.lv*40}</p><div class="rd-chips"><small>Add per tap:</small>${[1,5,10,0].map(n=>`<button class="c ${STEP===n?"on":""}" data-v="step:${n}">${n?"×"+n:"All"}</button>`).join("")}</div><div class="rd-chips"><small>Auto-spend:</small>${Object.keys(PRESETS).map(k=>`<button class="c" data-v="auto:${k}" ${R.pts>0?"":"disabled"}>${PRESETS[k][0]}</button>`).join("")}</div><div class="rd-two"><div>${rows}</div><div class="rd-mon rd-left"><small><b>Stats</b></small>${[["HP",ps.hp],["MP",ps.mp],["ATK",ps.atk],["MATK",ps.matk],["DEF",ps.def],["ACC",ps.acc],["DODGE",ps.dodge],["SPD",ps.spd],["CRIT",ps.crit+"%"]].map(x=>`<div class="rd-st"><span>${x[0]}</span><b>${x[1]}</b></div>`).join("")}</div></div><div class="rd-mon rd-left"><small><b>Equipment</b></small>${gear}</div><button class="c" data-v="reset">↺ Reset attributes</button><br><button id="rdBk">◂ Back</button>`);
+ bind(v=>{if(v.startsWith("a:")){const a=RA.find(x=>x.id===v.slice(2));if(a&&R.pts>0){const n=STEP?Math.min(STEP,R.pts):R.pts;R.pts-=n;R.attr[a.k]+=n;save()}return sheet()}
+  if(v.startsWith("step:")){STEP=+v.slice(5);return sheet()}
+  if(v.startsWith("auto:")){const p=PRESETS[v.slice(5)],n=autoSpend(p[1]);return sheet(n?"Spent "+n+" points as "+p[0]+".":"")}
+  if(v==="reset"){let n=0;RA.forEach(x=>{n+=R.attr[x.k]-5;R.attr[x.k]=5});R.pts+=n;clampRun();save();return sheet("Attributes reset. Your points were refunded.")}});
+ $("#rdBk").onclick=()=>{clampRun();R.run?camp():hub()}}
+function start(){const R=raid(),ps=stats();R.run={floor:1,hp:ps.hp,mp:ps.mp,mon:null};save();camp("You enter the dungeon. Spend your attribute points, then fight.")}
+function camp(note){const R=syncPts(),run=R.run;if(!run)return hub();clampRun();const ps=stats();R.best=Math.max(R.best,run.floor);
+ const m=run.mon||(run.mon=monster(run.floor));save();
+ show(`<b>🏕 Camp · Floor ${run.floor}</b>${note?`<p>${note}</p>`:""}${bar(run.hp,ps.hp,"#5cb85c")}${bar(run.mp,ps.mp,"#4a8fe0")}<p>Unspent attribute points: <b>${R.pts}</b></p><div class="rd-mon"><small>Scouting report</small><div class="big">${sprHtml(sprOf(m),Math.min(90,(sprOf(m)||{}).h||90))||m.e}</div><b>${m.n}${m.boss?" (BOSS)":""}</b><small>${m.tip}</small><small>HP ${m.max} · ATK ${m.atk} · DEF ${m.def} · ACC ${m.acc} · DODGE ${m.dodge}</small><small>Your hit chance ${hitChance(ps.acc,m.dodge)}% · its hit chance ${hitChance(m.acc,ps.dodge)}%</small></div><button class="c sh" data-v="sheet">📊 Character and attributes<small>${R.pts} point${R.pts==1?"":"s"} to spend</small></button><button class="c sh" data-v="fight">⚔ Fight Floor ${run.floor}</button><button class="c" data-v="leave">🚪 Leave the raid</button>`);
+ bind(v=>{if(v==="sheet")return sheet();if(v==="fight")return fight();
+  if(v==="leave"){R.runs++;R.run=null;save();return hub("You left the raid. Your attributes, level and gear are kept.")}})}
+/* ---- real-time battle (Ragnarok style): auto attacks on timers, animated sprites ---- */
+let RT=null;
+function stopRT(){if(RT){clearInterval(RT);RT=null}}
+function fight(note){const R=raid(),run=R.run;if(!run)return hub();stopRT();clampRun();
+ const m=run.mon||(run.mon=monster(run.floor)),ps0=stats();
+ show(`<b>🏰 Raid · Floor ${run.floor}${m.boss?" · BOSS":""}</b>
+ <div id="rdStage" class="rd-stage"><div class="rd-gr"></div>
+  <div class="rd-side rd-l"><small>${HERO_SPR.n} · Lv ${S.lv}</small><div class="rd-bar"><i id="rdPh" style="background:#5cb85c"></i><span id="rdPhT"></span></div><div class="rd-bar rd-bs"><i id="rdPm" style="background:#4a8fe0"></i><span id="rdPmT"></span></div><div class="rd-spr" id="rdPS">${sprHtml(HERO_SPR,100)||"🦸"}</div></div>
+  <div class="rd-side rd-r"><small>${m.n}</small><div class="rd-bar"><i id="rdMh" style="background:#d9534f"></i><span id="rdMhT"></span></div><div class="rd-spr${m.boss?" rd-big":""}" id="rdMS">${sprHtml(sprOf(m),(sprOf(m)||{}).h||128)||m.e}</div></div>
+ </div>
+ <div class="rd-mon rd-left"><small>${m.tip}</small><small>ATK ${m.atk} · DEF ${m.def} · ACC ${m.acc} · DODGE ${m.dodge} · CRIT ${m.crit}%</small></div>
+ <div id="rdLog" class="rd-log">${note||""}</div>
+ <div class="rd-btns"><button class="c" data-v="spl" id="rdSpl">🔮 Spell<small id="rdSplT"></small></button><button class="c" data-v="grd" id="rdGrd">🛡 Guard: off<small>DEF ×1.6 · slower attacks</small></button><button class="c" data-v="pot" id="rdPot">🧪 Potion<small id="rdPotT"></small></button><button class="c" data-v="ret">🚪 Retreat<small>Back to camp</small></button></div>`);
+ const g=id=>document.getElementById(id),st={pT:700,mT:1200,spC:0,potC:0,guard:false,sv:0,over:false,log:[],last:performance.now()};
+ const say=t=>{st.log.push(t);g("rdLog").innerHTML=st.log.slice(-3).join("<br>")};
+ const anim=(el,c)=>{if(!el)return;el.classList.remove(c);void el.offsetWidth;el.classList.add(c)};
+ const pop=(side,txt,cls)=>{const s=g("rdStage");if(!s)return;const d=document.createElement("span");d.className="rd-pop "+(cls||"");d.textContent=txt;d.style.left=(side==="m"?"68%":"18%")+"";d.style.top=(120+Math.random()*30)+"px";s.appendChild(d);setTimeout(()=>d.remove(),950)};
+ const shot=()=>{const s=g("rdStage");if(!s)return;const p=document.createElement("span");p.className="rd-proj";p.textContent="🔮";s.appendChild(p);setTimeout(()=>p.remove(),420)};
+ const ui=()=>{const ps=stats(),mx=Math.max(1,m.max);
+  g("rdPh").style.width=Math.max(0,run.hp/ps.hp*100)+"%";g("rdPhT").textContent=Math.max(0,Math.ceil(run.hp))+"/"+ps.hp;
+  g("rdPm").style.width=Math.max(0,run.mp/ps.mp*100)+"%";g("rdPmT").textContent=Math.floor(run.mp)+"/"+ps.mp;
+  g("rdMh").style.width=Math.max(0,m.hp/mx*100)+"%";g("rdMhT").textContent=Math.max(0,Math.ceil(m.hp))+"/"+m.max;
+  const sp=g("rdSpl");sp.disabled=st.spC>0||run.mp<10;g("rdSplT").textContent=st.spC>0?(st.spC/1000).toFixed(1)+"s":"10 MP · never misses · ~"+Math.max(1,Math.round(ps.matk-m.def/2))+" dmg";
+  const pt=g("rdPot");pt.disabled=st.potC>0||!(S.pot>0);g("rdPotT").textContent=st.potC>0?(st.potC/1000).toFixed(1)+"s":"Heal 40% · x"+(S.pot||0);
+  g("rdGrd").firstChild.textContent="🛡 Guard: "+(st.guard?"ON":"off")};
+ const finish=(win)=>{st.over=true;stopRT();save();anim(g(win?"rdMS":"rdPS"),"rd-die");setTimeout(()=>{const l=st.log.slice(-3);win?winFn(l):lose(l)},750)};
+ const winFn=l=>win(l);
+ const pAttack=()=>{const ps=stats();anim(g("rdPS"),"rd-lungeP");
+  if(Math.random()*100<hitChance(ps.acc,m.dodge)){const r=physDamage(ps.atk,m.def,ps.crit);m.hp-=r.dmg;setTimeout(()=>{anim(g("rdMS"),"rd-hit");pop("m",(r.crit?"💥 ":"")+r.dmg,r.crit?"rd-crit":"")},140);say("⚔ You hit "+m.n+" for "+r.dmg+(r.crit?" (critical!)":"")+".")}
+  else{setTimeout(()=>pop("m","Miss","rd-miss"),140);say("💨 "+m.n+" dodged.")}
+  if(m.hp<=0)finish(true)};
+ const mAttack=()=>{const ds=stats(st.guard?{def:1.6}:{});anim(g("rdMS"),"rd-lungeM");
+  if(Math.random()*100<hitChance(m.acc,ds.dodge)){const r=physDamage(m.atk,ds.def,m.crit);run.hp-=r.dmg;setTimeout(()=>{anim(g("rdPS"),"rd-hit");pop("p","-"+r.dmg,"rd-dmg"+(r.crit?" rd-crit":""))},140);say(m.e+" "+m.n+" hits you for "+r.dmg+(r.crit?" (critical!)":"")+".")}
+  else{setTimeout(()=>pop("p","Dodge","rd-miss"),140);say("💨 You dodged "+m.n+"’s attack.")}
+  if(run.hp<=0){run.hp=0;finish(false)}};
+ const act=v=>{if(st.over)return;const ps=stats();
+  if(v==="spl"){if(st.spC>0||run.mp<10)return;run.mp-=10;st.spC=3000;anim(g("rdPS"),"rd-lungeP");shot();const r=magicDamage(ps.matk,m.def,ps.crit);m.hp-=r.dmg;setTimeout(()=>{anim(g("rdMS"),"rd-hit");pop("m","🔮 "+r.dmg,"rd-mag"+(r.crit?" rd-crit":""))},380);say("🔮 Your spell hits for "+r.dmg+(r.crit?" (critical!)":"")+".");if(m.hp<=0)finish(true)}
+  else if(v==="grd"){st.guard=!st.guard}
+  else if(v==="pot"){if(st.potC>0||!(S.pot>0))return;S.pot--;st.potC=5000;const h=Math.round(ps.hp*.4);run.hp=Math.min(ps.hp,run.hp+h);pop("p","+"+h,"rd-heal");say("🧪 You recover "+h+" HP.");save()}
+  else if(v==="ret"){st.over=true;stopRT();save();return camp("You retreated from the fight.")}
+  ui()};
+ bind(act);
+ RT=setInterval(()=>{if(st.over)return;const s=g("rdStage");if(!s||document.getElementById("m").hidden){stopRT();save();return}
+  const now=performance.now(),dt=Math.min(100,now-st.last);st.last=now;const ps=stats();
+  run.mp=Math.min(ps.mp,run.mp+(st.guard?5:3)*dt/1000);
+  st.spC=Math.max(0,st.spC-dt);st.potC=Math.max(0,st.potC-dt);
+  st.pT-=dt;if(st.pT<=0){st.pT+=(1300*100/Math.max(50,ps.spd))*(st.guard?2:1);pAttack();if(st.over)return}
+  st.mT-=dt;if(st.mT<=0){st.mT+=m.boss?1350:1500;mAttack();if(st.over)return}
+  st.sv+=dt;if(st.sv>1000){st.sv=0;save()}ui()},50);
+ ui();say(note?"":"⚔ Battle start!")}
+function dropGear(f){const R=raid(),t=Math.max(1,Math.floor(f/10)),g=GEAR[Math.floor(Math.random()*GEAR.length)],b={};
+ for(const k in g.b)b[k]=g.b[k]*t;const it={slot:g.slot,n:g.names[Math.min(g.names.length-1,t-1)],b},val=x=>x?Object.keys(x.b).reduce((a,k)=>a+x.b[k],0):0;
+ if(val(it)>val(R.eq[g.slot])){R.eq[g.slot]=it;return "🎁 Boss drop: <b>"+it.n+"</b> ("+bonusText(it.b)+") equipped!"}
+ return "🎁 Boss drop: "+it.n+". You already wear better gear."}
+function win(log){const R=raid(),run=R.run,m=run.mon,f=run.floor;
+ const xp=12+f*4,gold=(5+f*2)*(m.boss?3:1),ore=(f%5===0?1:0)+(m.boss?1:0);const lv0=S.lv;
+ S.xp+=xp;while(S.xp>=S.lv*40){S.xp-=S.lv*40;S.lv++}const up=S.lv-lv0;if(up)syncPts();
+ S.gold+=gold;S.inv.ore=(S.inv.ore||0)+ore;
+ const drop=m.boss?dropGear(f):"";
+ run.floor=f+1;run.mon=null;R.best=Math.max(R.best,run.floor);
+ const ps=stats();run.hp=Math.min(ps.hp,run.hp+Math.round(ps.hp*.5));run.mp=Math.min(ps.mp,run.mp+Math.round(ps.mp*.5));
+ save();try{hud()}catch(e){}try{spark();tone([523,659,784])}catch(e){}
+ show(`<div class="big">${m.boss?"🏆":"🎉"}</div><b>Floor ${f} cleared!</b><p>${log.join("<br>")}</p><p>+${xp} XP · +${gold} gold${ore?" · +"+ore+" Iron Ore":""}${up?`<br>⭐ Level up! Now Lv ${S.lv} (+${3*up} attribute points)`:""}</p>${drop?`<p>${drop}</p>`:""}<p><small>You rest at the next camp: +50% HP and MP.</small></p><button id="rdNext">Continue</button>`);
+ $("#rdNext").onclick=()=>camp()}
+function lose(log){const R=raid(),run=R.run,f=run.floor,m=run.mon;R.best=Math.max(R.best,f);R.runs++;R.run=null;save();
+ show(`<div class="big">💫</div><b>Defeated on Floor ${f}</b><p>${log.join("<br>")}</p><p>${m.e} <b>${m.n}</b>: ${m.tip}</p><p>Your attributes, level and gear are kept. Spend your points to counter what beat you, and try again. Deepest floor: ${R.best}.</p><button class="c sh" data-v="sheet">📊 Character and attributes</button><button class="c sh" data-v="again">⚔ Start a new raid</button><br><button id="rdX2">Close</button>`);
+ bind(v=>v==="sheet"?sheet():start());$("#rdX2").onclick=hide}
+
+/* ---- entry buttons + styles ---- */
+const css=document.createElement("style");css.textContent="#m .rd-img{display:block;margin:0 auto;width:auto;max-width:100%;object-fit:contain;pointer-events:none}#m .rd-spr:has(.rd-img){line-height:0}#m .rd-stage{height:240px}#m .rd-chips{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:6px 0}#m .rd-chips small{flex:0 0 auto;font-weight:700}#m .rd-chips .c{margin:0;width:auto;min-width:0;padding:4px 9px;font-size:12px;border-radius:8px}#m .rd-chips .c.on{outline:2px solid #ffd36a;filter:brightness(1.15)}#m .rd-stage{position:relative;height:200px;border-radius:12px;overflow:hidden;margin:8px 0;background:linear-gradient(#bfe3f5,#e9f4d8 62%,#8fb36a 62%);border:1px solid #8886}#m .rd-gr{position:absolute;left:0;right:0;bottom:0;height:38%;background:repeating-linear-gradient(90deg,#0000 0 24px,#0001 24px 26px)}#m .rd-side{position:absolute;bottom:10px;width:42%;text-align:center}#m .rd-side small{display:block;font-weight:700;font-size:11px}#m .rd-l{left:3%}#m .rd-r{right:3%}#m .rd-bs{height:12px;margin-top:2px}#m .rd-bs span{font-size:9px;line-height:12px}#m .rd-spr{font-size:54px;line-height:1.1;animation:rdBob 1.1s ease-in-out infinite;position:relative;transform-origin:50% 100%}#m .rd-r .rd-spr{animation-delay:.4s}#m .rd-spr.rd-big{font-size:76px}#m .rd-lungeP{animation:rdLP .32s ease-out!important}#m .rd-lungeM{animation:rdLM .32s ease-out!important}#m .rd-hit{animation:rdHit .28s!important}#m .rd-die{animation:rdDie .75s forwards!important}#m .rd-pop{position:absolute;font:800 18px system-ui;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;animation:rdUp .95s ease-out forwards;pointer-events:none;z-index:3}#m .rd-pop.rd-crit{font-size:26px;color:#ffd84a}#m .rd-pop.rd-dmg{color:#ff8a80}#m .rd-pop.rd-heal{color:#8cf59a}#m .rd-pop.rd-mag{color:#b9a4ff}#m .rd-pop.rd-miss{color:#ddd;font-size:14px}#m .rd-proj{position:absolute;bottom:70px;font-size:26px;animation:rdProj .4s linear forwards;z-index:2}#m .rd-log{min-height:54px;font-size:12px;text-align:left;margin:6px 0}#m .rd-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}#m .rd-btns .c{margin:0;width:100%;min-width:0}#m .rd-btns .c small{display:block;font-size:10px;opacity:.85}@keyframes rdBob{50%{transform:translateY(-5px)}}@keyframes rdLP{40%{transform:translateX(70px) scale(1.12)}}@keyframes rdLM{40%{transform:translateX(-70px) scale(1.12)}}@keyframes rdHit{25%{filter:brightness(2.6) saturate(0);transform:translateX(6px)}60%{transform:translateX(-6px)}}@keyframes rdDie{to{opacity:0;transform:rotate(70deg) translateY(20px)}}@keyframes rdUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}@keyframes rdProj{from{left:22%}to{left:68%}}@media (prefers-reduced-motion:reduce){#m .rd-spr{animation:none}}#m .rd-two{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;align-items:start}#m .rd-two .rd-mon{margin:4px 0}#m .rd-two .rd-val small{font-size:11px}#m .rd-two .rd-st{font-size:13px}#m .rd-mon.rd-left{text-align:left}#m .rd-st{display:flex;justify-content:space-between;padding:2px 4px;border-bottom:1px dotted #8884}#m .rd-st:last-of-type{border:0}#m .rd-row{display:flex;align-items:center;gap:10px;margin:4px 0;text-align:left}#m .rd-row .c.rd-plus{flex:0 0 30px;width:30px;min-width:0;height:30px;padding:0;margin:0;font-size:17px;line-height:1;border-radius:7px}#m .rd-val{flex:1}#m .rd-val small{display:block;opacity:.75}#m .rd-bar{position:relative;height:18px;border-radius:9px;background:#0003;overflow:hidden;margin:4px 0}#m .rd-bar i{position:absolute;inset:0 auto 0 0}#m .rd-bar span{position:relative;display:block;text-align:center;font:700 11px/18px system-ui;color:#fff;text-shadow:0 1px 2px #000a}#m .rd-mon{border:1px solid #8886;border-radius:12px;padding:8px;margin:8px 0;text-align:center}#m .rd-mon small{display:block}";document.head.appendChild(css);
+const addBtn=(id,t,fn)=>{if(document.getElementById(id))return;const b=document.createElement("button");b.id=id;b.type="button";b.textContent=t;b.onclick=()=>{if(!document.getElementById("m").hidden)return;fn()};
+ const h=document.querySelector("header").lastElementChild,m=document.querySelector("#kqMenu .mbtns>div");(m||h).appendChild(b)};
+addBtn("kqRaidBtn","⚔ Raid Dungeon",()=>hub());
+addBtn("kqGmBtn","🛠 GM Mode",()=>gm());
+window.kqRaid={hub,stats,monster,derive,hitChance,physDamage,magicDamage};
+}catch(e){console.warn("raid",e)}})();
+</script></body></html>
