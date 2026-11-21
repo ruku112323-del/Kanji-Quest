@@ -1152,7 +1152,7 @@ function villageLevel(r,b){return ((S.villages||{})[r]||{})[b]||1}
 function villageReq0(r,b,l){const kills=S.kills[r]||0,boss=!!S[RG[r].win];if(l===2)return kills>=3?"":"Defeat 3 monsters in this region";if(l===3)return boss?"":"Defeat this region’s boss";if(l===4)return kills>=6?"":"Defeat 6 monsters in this region";if(l===5)return boss&&kills>=10?"":"Defeat the boss and 10 monsters in this region";return ""}
 function villageCost(r,l){return {gold:35*l,ore:l+1}}
 function villageBenefit(b,l){if(b==="workshop")return l>=5?"+2 bonus regional ore from monster rewards (plus the level 3 bonus)":l>=3?"+1 bonus regional ore from monster rewards":"Improved production facilities";return l>=5?"+20% monster coins and +10% XP":"+"+((l-1)*5)+"% monster coin rewards"}
-function upgradeVillage(r,b){const cur=villageLevel(r,b);if(cur>=5)return civilization("This building is already at maximum level.");const next=cur+1,req=villageReq(r,b,next),cost=villageCost(r,cur);if(req)return civilization(req+" before upgrading.");if(S.gold<cost.gold)return civilization("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return civilization("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");kqUpgradeTrial(r,b)}
+function upgradeVillage(r,b,fromDlg){const back=m=>fromDlg?kqUpgradeDlg(r,b,m):civilization(m);const cur=villageLevel(r,b);if(cur>=5)return back("This building is already at maximum level.");const next=cur+1,req=villageReq(r,b,next),cost=villageCost(r,cur);if(req)return back(req+" before upgrading.");if(S.gold<cost.gold)return back("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return back("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");kqUpgradeTrial(r,b,fromDlg)}
 let civPage="main";
 function civilization(note=""){
  const keys=["k","w","t","i","f","a"];
@@ -1428,17 +1428,17 @@ function kqSentenceRun(r,B,onEnd){
    const up=kqStreak(b.k,ok);if(!ok)miss++;res[i]=ok;i++;save();
    ask(ok?`\u2705 ${b.k} (${K[b.k].m}).${up?` \u{1F4C8} ${b.k} is now ${up}!`:""}<br>`:`\u274C It was ${b.k} (${K[b.k].m}).<br>`)})};
  ask()}
-function kqUpgradeDo(r,b,pre=""){const cur=villageLevel(r,b);if(cur>=5)return civilization("This building is already at maximum level.");const next=cur+1,cost=villageCost(r,cur);if(S.gold<cost.gold)return civilization("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return civilization("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");S.gold-=cost.gold;S.ores[r][0]-=cost.ore;S.villages[r][b]=next;save();hud();civilization(pre+VILLAGE_BUILDINGS[r][b]+" upgraded to Level "+next+"!")}
-function kqUpgradeTrial(r,b){
- const name=VILLAGE_BUILDINGS[r][b],cur=villageLevel(r,b),bank=[...(UP_S[r]||[]),...(BOSS_S[r]?[BOSS_S[r]]:[])];
- if(!bank.length)return kqUpgradeDo(r,b);
+function kqUpgradeDo(r,b,pre="",fromDlg){const back=m=>fromDlg?kqUpgradeDlg(r,b,m):civilization(m);const cur=villageLevel(r,b);if(cur>=5)return back("This building is already at maximum level.");const next=cur+1,cost=villageCost(r,cur);if(S.gold<cost.gold)return back("You need "+cost.gold+" coins for this upgrade.");if((S.ores[r][0]||0)<cost.ore)return back("You need "+cost.ore+" Common "+ORE_NAMES[r]+".");S.gold-=cost.gold;S.ores[r][0]-=cost.ore;S.villages[r][b]=next;save();hud();try{window.kqUpgradeFx&&kqUpgradeFx(r,b)}catch(e){}back(pre+VILLAGE_BUILDINGS[r][b]+" upgraded to Level "+next+"!")}
+function kqUpgradeTrial(r,b,fromDlg){
+ const name=VILLAGE_BUILDINGS[r][b],cur=villageLevel(r,b),bank=[...(UP_S[r]||[]),...(BOSS_S[r]?[BOSS_S[r]]:[])],back=()=>fromDlg?kqUpgradeDlg(r,b):civilization();
+ if(!bank.length)return kqUpgradeDo(r,b,"",fromDlg);
  const pick=()=>{let B;do{B=bank[Math.floor(Math.random()*bank.length)]}while(bank.length>1&&B===kqUpgradeTrial.last);kqUpgradeTrial.last=B;return B};
  const run=()=>kqSentenceRun(r,pick(),(perfect,miss,n,sent,en)=>{
-  if(perfect){show(`<div class="big">\u{1F31F}</div><b>Trial passed!</b><div class="kq-bs-s">${sent}</div><p><small>${en}</small></p><p>${n}/${n} correct. The builders get to work.</p><button id="upOk">Start construction</button>`);$("#upOk").onclick=()=>kqUpgradeDo(r,b,"\u{1F9E9} Trial passed! ");return}
+  if(perfect){show(`<div class="big">\u{1F31F}</div><b>Trial passed!</b><div class="kq-bs-s">${sent}</div><p><small>${en}</small></p><p>${n}/${n} correct. The builders get to work.</p><button id="upOk">Start construction</button>`);$("#upOk").onclick=()=>kqUpgradeDo(r,b,"\u{1F9E9} Trial passed! ",fromDlg);return}
   show(`<div class="big">\u{1F4D6}</div><b>Not quite</b><div class="kq-bs-s">${sent}</div><p><small>${en}</small></p><p>${n-miss}/${n} correct. The builders need every blank right. Nothing was spent.</p><button id="upAgain">Try another sentence</button><br><button id="upBack">\u25C2 Back</button>`);
-  $("#upAgain").onclick=run;$("#upBack").onclick=()=>civilization()});
+  $("#upAgain").onclick=run;$("#upBack").onclick=back});
  show(`<div class="big">\u{1F3D7}</div><b>Builder\u2019s Trial: ${name}</b><p>Before work on ${name} (Level ${cur} \u2192 ${cur+1}) begins, the builders test your reading. Fill each blank with the kanji that matches the reading above it. Get every blank right to start construction. Nothing is spent unless you pass, and you can try again.</p><button id="upGo">Begin the trial</button><br><button id="upBack0">\u25C2 Back</button>`);
- $("#upGo").onclick=run;$("#upBack0").onclick=()=>civilization()}
+ $("#upGo").onclick=run;$("#upBack0").onclick=back}
 function kqParse(str){const out=[],re=/\[(.)\|([^\]]+)\]|\{([^|}]+)\|([^}]+)\}|([^\[{]+)/g;let m;while((m=re.exec(str))){if(m[1])out.push({b:1,k:m[1],r:m[2]});else if(m[3])out.push({k:m[3],r:m[4]});else out.push({t:m[5]})}return out}
 (function(){const c=document.createElement("style");c.textContent=
  "#m .kq-bs-s{font-size:22px;line-height:2.6;margin:8px 0;text-align:center}#m .kq-bs-s rt{font-size:.45em;color:#d8c9a0}"+
@@ -1786,7 +1786,7 @@ window.kqUpgradeDlg=function(r,first,note){try{const V=VILLAGE_BUILDINGS[r],orde
   h+='<div class="component-card" style="margin:8px 0"><b>'+V[b]+'</b><small>Level '+lv+'/5</small>'+kqThumbRow(r,b,lv,84)+'<small>'+villageBenefit(b,lv)+'</small>'+
    (lv<5?'<small>Next: '+villageBenefit(b,next)+'</small><small>Cost: '+cost.gold+' coins + '+cost.ore+' Common '+ORE_NAMES[r]+' (you have '+S.gold+' coins, '+ore+' ore)</small>'+(req?'<small>Requirement: '+req+'</small>':'')+'<button class="kqup" data-b="'+b+'"'+(req||!afford?' disabled':'')+'>Upgrade to Level '+next+'</button>':'<small>Maximum level reached</small>')+'</div>'});
  h+='<button id="kqUpX">Close</button>';show(h);
- document.querySelectorAll("#m .kqup").forEach(btn=>btn.onclick=()=>{const b=btn.dataset.b;upgradeVillage(r,b);kqUpgradeDlg(r,b,V[b]+' upgraded to Level '+villageLevel(r,b)+'!')});
+ document.querySelectorAll("#m .kqup").forEach(btn=>btn.onclick=()=>upgradeVillage(r,btn.dataset.b,true));
  $("#kqUpX").onclick=hide}catch(e){console.warn("upgrade dialog",e)}};
 window.kqVilTap=function(x,y){if(S.r!=="k")return false;const v=VIL.find(v=>S.civ[v.k]&&v.at.some(p=>p[0]==x&&p[1]==y));if(!v)return false;if(v.k==="shelter"){kqUpgradeDlg("k","hall");return true}if(v.k==="metal"){kqUpgradeDlg("k","workshop");return true}return false};
 function kqGuard(t,x,y){const R=RG[S.r],i=t.index%6;
@@ -1817,7 +1817,7 @@ function vil(){if(S.r!=="k"||!P.vil)return;const sc=P.sc,hall=villageLevel("k","
 const _ts=tileset;window.tileset=function(sc){_ts(sc);try{fixTiles(sc)}catch(e){}};
 const _lr=loadRegion;window.loadRegion=function(){_lr();try{world();vil()}catch(e){console.warn("world art",e)}};
 const _g=gather;window.gather=function(t,x,y){if(kqGuard(t,x,y))return;const wi=t.index;_g(t,x,y);if(wi%6===3){const tt=P.layer.getTileAt(x,y);if(tt&&tt.index!==wi)P.layer.putTileAt(wi,x,y)}const p=P.props&&P.props[x+","+y];if(p&&p.scene&&S.cut.includes(S.r+","+x+","+y)){p.sh&&p.sh.destroy();p.destroy();delete P.props[x+","+y]}};
-const _uv=upgradeVillage;window.upgradeVillage=function(r,b){const l0=villageLevel(r,b);_uv(r,b);if(villageLevel(r,b)>l0){spark();tone([523,659,784]);toast("🏗","Upgrade complete",RG[r].n+" · "+VILLAGE_BUILDINGS[r][b]+" Lv "+villageLevel(r,b));try{if(S.r===r){world();vil()}}catch(e){}}};
+window.kqUpgradeFx=function(r,b){spark();tone([523,659,784]);toast("🏗","Upgrade complete",RG[r].n+" · "+VILLAGE_BUILDINGS[r][b]+" Lv "+villageLevel(r,b));try{if(S.r===r){world();vil()}}catch(e){}};
 /* character scale hierarchy: player ≈ NPCs, monsters smaller, bosses clearly larger */
 const _sp=setPort;window.setPort=function(s,i,h){const e=E.find(o=>P.es&&P.es[o.id]===s);h=s===P.pl?60:!e?h:e.t==="m"?Math.min(h,42):e.t==="o"?Math.max(h,88):(e.t==="s"||e.t==="b")?60:h;_sp(s,i,h)};
 /* per-frame: y-sorting, facing, NPC idle animation, nearby-resource marker */
